@@ -45,6 +45,8 @@ jobs:
           cp discloud.config start.py requirements.txt out/
           chmod +x out/server/PCBoost.Server
           test -f out/server/wwwroot/index.html
+          # A hospedagem pode sobrescrever Cache-Control: cada build usa URLs novas.
+          sed -i -E "s/[?]v=[[:alnum:]-]+/?v=${GITHUB_SHA:0:12}/g" out/server/wwwroot/index.html
           du -sh out
 
       - name: Testar se o servidor sobe
