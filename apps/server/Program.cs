@@ -39,8 +39,13 @@ app.UseRateLimiter();
 app.UseDefaultFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
-    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl =
-        ctx.File.Name.EndsWith(".html") ? "no-cache" : "public, max-age=86400"
+    OnPrepareResponse = ctx =>
+    {
+        // Revalida a interface a cada visita para não misturar HTML novo com scripts antigos.
+        var extension = Path.GetExtension(ctx.File.Name).ToLowerInvariant();
+        ctx.Context.Response.Headers.CacheControl = extension is ".html" or ".js" or ".css"
+            ? "no-cache" : "public, max-age=86400";
+    }
 });
 
 // O hub só aceita conexões com token válido (enviado pelo cliente SignalR como access_token).
