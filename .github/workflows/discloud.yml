@@ -1,0 +1,65 @@
+# Compila o servidor para Linux e publica o pacote pronto no branch "discloud".
+# A Discloud não tem .NET: ela deve puxar (Auto Deploy) o branch "discloud", não o "main".
+# O branch contém só: discloud.config, start.py, requirements.txt e server/ (executável autocontido).
+name: Discloud
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/server/**
+      - apps/web/**
+      - packages/shared/**
+      - Directory.Build.props
+      - discloud.config
+      - start.py
+      - requirements.txt
+      - .github/workflows/discloud.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: discloud
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Compilar servidor (linux-x64, autocontido)
+        run: >
+          dotnet publish apps/server/PCBoost.Server.csproj -c Release -r linux-x64 --self-contained true
+          -p:InvariantGlobalization=true -p:DebugType=none -p:GenerateDocumentationFile=false
+          -o out/server
+
+      - name: Montar pacote
+        run: |
+          cp discloud.config start.py requirements.txt out/
+          chmod +x out/server/PCBoost.Server
+          test -f out/server/wwwroot/index.html
+          du -sh out
+
+      - name: Testar se o servidor sobe
+        run: |
+          cd out
+          PORT=8080 PCBOOST_DATA="$RUNNER_TEMP/test.db" ./server/PCBoost.Server &
+          for i in $(seq 1 30); do curl -fs http://localhost:8080/api/health && exit 0; sleep 1; done
+          echo "O servidor não respondeu em /api/health"; exit 1
+
+      - name: Publicar no branch discloud
+        run: |
+          cd out
+          git init -q -b discloud
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Servidor compilado de ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" discloud
