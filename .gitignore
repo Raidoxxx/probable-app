@@ -8,6 +8,7 @@ obj/
 /dist*/
 /installer/
 /deploy/discloud/server/
+/server/
 /deploy/*.zip
 
 # Resultados e capturas geradas pelos testes (rodam na pasta atual)
@@ -23,6 +24,7 @@ verification/
 *.db-shm
 *.db-wal
 /deploy/discloud/data/
+/data/
 
 # Ferramentas
 /graphify-out/

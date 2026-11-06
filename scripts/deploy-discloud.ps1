@@ -3,11 +3,15 @@
 # Depois envie o .zip pelo painel da Discloud (ou: discloud upload / discloud commit).
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$stage = Join-Path $root "deploy\discloud"
+$stage = $root
 $server = Join-Path $stage "server"
 $zip = Join-Path $root "deploy\pcboost-discloud.zip"
 
-if (Test-Path $server) { Remove-Item -Recurse -Force $server }
+$expectedServer = [System.IO.Path]::GetFullPath((Join-Path $root "server"))
+if ([System.IO.Path]::GetFullPath($server) -ne $expectedServer -or (Split-Path $expectedServer -Parent) -ne $root) {
+    throw "Pasta de publicação fora da raiz do projeto."
+}
+if (Test-Path -LiteralPath $server) { Remove-Item -LiteralPath $server -Recurse -Force }
 # Executável Linux autocontido: a Discloud não precisa ter .NET instalado.
 dotnet publish (Join-Path $root "apps\server\PCBoost.Server.csproj") -c Release -r linux-x64 --self-contained true `
     -p:InvariantGlobalization=true -p:DebugType=none -p:GenerateDocumentationFile=false -o $server
@@ -15,6 +19,7 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet publish falhou." }
 
 # Zip com separador "/" (o Compress-Archive do Windows PowerShell grava "\" e quebra no Linux).
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+New-Item -ItemType Directory -Path (Split-Path $zip -Parent) -Force | Out-Null
 if (Test-Path $zip) { Remove-Item $zip }
 $archive = [System.IO.Compression.ZipFile]::Open($zip, [System.IO.Compression.ZipArchiveMode]::Create)
 try {

@@ -21,7 +21,10 @@ apps/desktop      App Windows (WPF, .NET 8): Boost + cliente estilo Discord
 apps/server       Servidor (ASP.NET Core 8 + SignalR + SQLite): contas, servidores, canais, chat, voz e quadros
 apps/web          Site de download (HTML/CSS/JS estático), servido pelo próprio servidor em /
 packages/shared   Contratos (DTOs) usados pelo app e pelo servidor
-deploy/discloud   discloud.config + start.py (lançador) para hospedar o servidor na Discloud
+discloud.config  Configuração da Discloud na raiz (MAIN=start.py)
+start.py         Lançador do servidor Linux em server/
+requirements.txt Dependências do lançador Python
+deploy/          Pacote ZIP gerado para a Discloud
 scripts/          build-installer.ps1, publish-release.ps1 e deploy-discloud.ps1
 docs/             Imagens e validação
 PCBoost.sln       Solução com os três projetos
@@ -34,14 +37,16 @@ O instalador não pede administrador: coloca o app em `%LOCALAPPDATA%\Programs\P
 
 ## Publicar: servidor na Discloud + instalador
 
-A Discloud não roda .NET nativamente. Por isso o servidor vai **compilado como executável Linux autocontido** (com o .NET dentro), e o `deploy/discloud/start.py` só o inicia na porta 8080 que a Discloud exige para sites.
+A Discloud não roda .NET nativamente. Por isso o servidor vai **compilado como executável Linux autocontido** (com o .NET dentro), e o `start.py` na raiz só o inicia na porta 8080 que a Discloud exige para sites.
+
+O `discloud.config`, o `start.py` e o `requirements.txt` ficam na raiz do projeto. Use o ZIP gerado abaixo para publicar: clonar este repositório na Discloud não inclui `server/`, pois os binários compilados são ignorados pelo Git.
 
 1. **Gere o pacote:**
    ```powershell
    powershell -ExecutionPolicy Bypass -File scripts/deploy-discloud.ps1
    ```
    Sai `deploy/pcboost-discloud.zip`, com `discloud.config`, `start.py` e a pasta `server/` na raiz.
-2. **Envie o .zip** pelo painel da Discloud ou pela CLI (`discloud upload`, e `discloud commit` nas atualizações). O [discloud.config](deploy/discloud/discloud.config) usa `TYPE=site` e `ID=probable-app`, então o endereço fica `https://probable-app.discloud.app`. Sites na Discloud pedem o **plano Platinum** e pelo menos **512 MB de RAM**. O subdomínio `probable-app` precisa estar livre na sua conta; se escolher outro, troque `ID` e o endereço do passo 3.
+2. **Envie o .zip** pelo painel da Discloud ou pela CLI (`discloud upload`, e `discloud commit` nas atualizações). O [discloud.config](discloud.config) usa `TYPE=site` e `ID=probable-app`, então o endereço fica `https://probable-app.discloud.app`. Sites na Discloud pedem o **plano Platinum** e pelo menos **512 MB de RAM**. O subdomínio `probable-app` precisa estar livre na sua conta; se escolher outro, troque `ID` e o endereço do passo 3.
 3. **Teste** `https://probable-app.discloud.app/api/health`. Deve responder `{"ok":true,...}`.
 4. **Gere o instalador apontando para ele** (o endereço fica gravado no app e o campo de endereço some da tela de entrada):
    ```powershell
