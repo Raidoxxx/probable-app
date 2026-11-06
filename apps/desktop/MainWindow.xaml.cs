@@ -390,7 +390,7 @@ public partial class MainWindow : Window
     private void WorkPage()
     {
         PageHost.Children.Add(Card(Stack(Mono("MODO TRABALHO", 11, "#EDEDED"), Text("Libere memória para trabalhar sem perder nada.", 18, true),
-            Muted("Marque apps que distraem ou pesam (jogos, launchers, players). IDE, terminais, agentes, Windows, segurança e o próprio PCBoost ficam protegidos. As regras são as mesmas do perfil Desenvolvimento e nada é fechado sem a sua seleção explícita."),
+            Muted("Marque apps que distraem ou pesam (jogos, launchers, players). IDE, terminais, agentes, Windows, segurança e o próprio Ximbuismo ficam protegidos. As regras são as mesmas do perfil Desenvolvimento e nada é fechado sem a sua seleção explícita."),
             Actions(Button("Abrir servidores", () => Navigate(PageGroups)), Button("Diagnosticar memória", () => Navigate(PageDiagnosis))))));
         BuildProfile(true);
     }

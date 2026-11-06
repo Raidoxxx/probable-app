@@ -48,7 +48,7 @@ public static class MemoryAnalysis
                 "brave" => "Brave", "code" => "Visual Studio Code", "svchost" => "Serviços do Windows",
                 "explorer" => "Explorador de Arquivos", "memory compression" => "Memória compactada",
                 "steamwebhelper" => "Steam · WebHelper", "msedgewebview2" => "Microsoft · WebView2",
-                "pcboost" => "PCBoost", _ => name
+                "pcboost" or "ximbuismo" => "Ximbuismo", _ => name
             };
             return new AppRow { Key = g.Key, DisplayName = friendly, Description = description, Processes = processes, TotalPhysical = snapshot.Total };
         }).OrderByDescending(p => p.PrivateBytes ?? -1).ToList();

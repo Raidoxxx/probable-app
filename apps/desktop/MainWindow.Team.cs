@@ -230,7 +230,7 @@ public partial class MainWindow
     {
         Rail.Children.Clear();
         bool home = page != PageGroups;
-        Rail.Children.Add(RailIcon(LogoMark(), "Boost", home, false, () => Navigate(PageOverview)));
+        Rail.Children.Add(RailIcon(LogoMark(), "Ximbuismo · Boost", home, false, () => Navigate(PageOverview)));
         Rail.Children.Add(new Border { Height = 2, Width = 32, Background = Brush("#262626"), Margin = new Thickness(0, 4, 0, 8), HorizontalAlignment = HorizontalAlignment.Center });
         foreach (var g in groups)
         {
@@ -249,16 +249,13 @@ public partial class MainWindow
     }
     private static UIElement LogoMark()
     {
-        var grid = new Grid { Width = 24, Height = 24 };
-        grid.Children.Add(new Ellipse { StrokeThickness = 2.2, Stroke = Brushes.White });
-        grid.Children.Add(new System.Windows.Shapes.Path { Data = Geometry.Parse("M4.6,17.6 C8.3,7.4 15.6,4.6 21.2,7.4"), StrokeThickness = 2.2, Stroke = Brushes.White });
-        return grid;
+        return new Image { Source = (ImageSource)Application.Current.FindResource("BrandLogo"), Width = 34, Height = 34 };
     }
     // Ícone circular que vira quadrado arredondado no hover/seleção, com a "pílula" branca à esquerda (Discord).
     private UIElement RailIcon(UIElement content, string tip, bool selected, bool unreadDot, Action click, bool accent = false)
     {
         var pill = new Border { Width = 4, Height = selected ? 40 : unreadDot ? 8 : 0, Background = Brushes.White, CornerRadius = new CornerRadius(0, 4, 4, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
-        var icon = new Border { Width = 48, Height = 48, CornerRadius = new CornerRadius(selected ? 14 : 24), Background = selected ? Brush("#EDEDED") : Brush("#161616"),
+        var icon = new Border { Width = 48, Height = 48, CornerRadius = new CornerRadius(selected ? 14 : 24), Background = selected ? Brush(content is Image ? "#222222" : "#EDEDED") : Brush("#161616"),
             BorderBrush = Brush(accent ? "#2E2E2E" : "#222222"), BorderThickness = new Thickness(1), Child = content, HorizontalAlignment = HorizontalAlignment.Center, Cursor = Cursors.Hand, ToolTip = tip };
         System.Windows.Documents.TextElement.SetForeground(icon, selected ? Brushes.Black : accent ? (Brush)FindResource("Accent") : Brush("#EDEDED"));
         if (selected && content is Grid g) foreach (var shape in g.Children.OfType<Shape>()) shape.Stroke = Brushes.Black;

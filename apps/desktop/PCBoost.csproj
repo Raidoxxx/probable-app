@@ -3,11 +3,17 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <AssemblyName>Ximbuismo</AssemblyName>
+    <RootNamespace>PCBoost</RootNamespace>
+    <Product>Ximbuismo</Product>
+    <Title>Ximbuismo</Title>
+    <ApplicationIcon>Assets/Ximbuismo.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Endereço do servidor oficial gravado no app: dotnet publish -p:TeamServerUrl=https://seu-servidor -->
     <TeamServerUrl Condition="'$(TeamServerUrl)' == ''">http://localhost:5080</TeamServerUrl>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="Assets/Ximbuismo.ico" />
     <AssemblyMetadata Include="TeamServer" Value="$(TeamServerUrl)" />
   </ItemGroup>
   <ItemGroup>

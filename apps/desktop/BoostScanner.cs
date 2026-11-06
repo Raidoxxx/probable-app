@@ -50,7 +50,7 @@ public static class BoostScanner
      "sentinel", "crowdstrike", "csfalcon", "forti", "nordvpn", "openvpn", "wireguard", "tailscale",
      "zerotier", "nvcontainer", "nvidia", "radeon", "audiodg", "realtek", "rtk", "intel", "amdfend",
      "onedrive", "dropbox", "googledrive", "backup", "syncthing", "rustdesk", "anydesk", "teamviewer",
-     "parsec", "sunshine", "pcboost", "codex", "node", "dotnet", "msbuild", "python", "powershell",
+     "parsec", "sunshine", "pcboost", "ximbuismo", "codex", "node", "dotnet", "msbuild", "python", "powershell",
      "pwsh", "conhost", "windowsterminal", "csc", "vbc"];
 
     internal static bool CanSuggest(IReadOnlyList<ProcessRow> group, IReadOnlySet<int> visible,

@@ -1,4 +1,4 @@
-// Site de download do PCBoost: arte em pontos (como no app) e status do servidor/instalador.
+// Site de download do Ximbuismo: arte em pontos (como no app) e status do servidor/instalador.
 (() => {
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);

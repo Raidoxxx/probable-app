@@ -8,11 +8,11 @@ using Microsoft.Win32;
 
 namespace PCBoost;
 
-// Instalador por usuário, sem administrador: o mesmo executável, quando se chama "PCBoost-Setup.exe",
-// copia-se para %LOCALAPPDATA%\Programs\PCBoost, cria atalhos e registra a desinstalação no Windows.
+// Instalador por usuário, sem administrador: Ximbuismo-Setup.exe
+// copia-se para %LOCALAPPDATA%\Programs\Ximbuismo, cria atalhos e registra a desinstalação no Windows.
 public static class Installer
 {
-    public const string AppName = "PCBoost";
+    public const string AppName = "Ximbuismo";
     public static string InstallDir => System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", AppName);
     public static string InstalledExe => System.IO.Path.Combine(InstallDir, AppName + ".exe");
     private const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\" + AppName;
@@ -29,7 +29,7 @@ public static class Installer
         foreach (var running in Process.GetProcessesByName(AppName))
             using (running)
             {
-                try { if (string.Equals(running.MainModule?.FileName, InstalledExe, StringComparison.OrdinalIgnoreCase)) { running.CloseMainWindow(); if (!running.WaitForExit(5000)) throw new InvalidOperationException("Feche o PCBoost aberto e tente de novo."); } }
+                try { if (string.Equals(running.MainModule?.FileName, InstalledExe, StringComparison.OrdinalIgnoreCase)) { running.CloseMainWindow(); if (!running.WaitForExit(5000)) throw new InvalidOperationException("Feche o Ximbuismo aberto e tente de novo."); } }
                 catch (System.ComponentModel.Win32Exception) { }
             }
         string temp = InstalledExe + ".new";
@@ -58,7 +58,7 @@ public static class Installer
 
     public static void Uninstall()
     {
-        if (MessageBox.Show("Remover o PCBoost deste PC? Suas configurações locais ficam em %LOCALAPPDATA%\\PCBoost e podem ser apagadas depois.", "Desinstalar PCBoost", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show("Remover o Ximbuismo deste PC? Suas configurações locais ficam em %LOCALAPPDATA%\\PCBoost e podem ser apagadas depois.", "Desinstalar Ximbuismo", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         foreach (var link in new[] { StartMenuLink, DesktopLink }) try { File.Delete(link); } catch (Exception) { }
         try { Registry.CurrentUser.DeleteSubKeyTree(UninstallKey, false); } catch (Exception) { }
         // O executável em uso não pode apagar a si mesmo: um cmd espera ele fechar e remove a pasta.
@@ -68,11 +68,10 @@ public static class Installer
     // Janela do instalador no mesmo visual do app.
     public static Window SetupWindow()
     {
-        var window = new Window { Title = "Instalar PCBoost", Width = 460, Height = 420, ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterScreen,
+        var window = new Window { Title = "Instalar Ximbuismo", Width = 460, Height = 420, ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterScreen,
             Background = (Brush)Application.Current.FindResource("Bg"), Foreground = (Brush)Application.Current.FindResource("Ink"), FontFamily = (FontFamily)Application.Current.FindResource("Sans") };
-        var logo = new Grid { Width = 58, Height = 58, Margin = new Thickness(0, 34, 0, 26) };
-        logo.Children.Add(new Ellipse { Stroke = Brushes.White, StrokeThickness = 4.5 });
-        logo.Children.Add(new System.Windows.Shapes.Path { Data = Geometry.Parse("M10,42 C18,18 38,10 52,17"), Stroke = Brushes.White, StrokeThickness = 4.5 });
+        window.Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/Assets/Ximbuismo.ico"));
+        var logo = new Image { Source = (ImageSource)Application.Current.FindResource("BrandLogo"), Width = 68, Height = 68, Margin = new Thickness(0, 26, 0, 18) };
         var status = new TextBlock { Text = "Boost de um clique, servidores com chat, voz e quadro de ideias.", Foreground = (Brush)Application.Current.FindResource("Muted"), TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 8, 0, 22) };
         var desktop = new CheckBox { Content = "Criar atalho na área de trabalho", IsChecked = true, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 22), Foreground = (Brush)Application.Current.FindResource("Muted") };
         var install = new Button { Content = "Instalar", Style = (Style)Application.Current.FindResource("PrimaryButton"), Width = 280, Padding = new Thickness(0, 10, 0, 10), Margin = new Thickness(0), FontSize = 14 };
@@ -91,7 +90,7 @@ public static class Installer
         };
         var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
         stack.Children.Add(logo);
-        stack.Children.Add(new TextBlock { Text = "PCBoost", FontSize = 24, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center });
+        stack.Children.Add(new TextBlock { Text = AppName, FontSize = 24, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center });
         stack.Children.Add(status); stack.Children.Add(desktop); stack.Children.Add(install); stack.Children.Add(where);
         window.Content = new Border { Margin = new Thickness(14), BorderBrush = (Brush)Application.Current.FindResource("Line"), BorderThickness = new Thickness(1), Background = (Brush)Application.Current.FindResource("Paper"), Child = stack };
         return window;

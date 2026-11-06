@@ -80,7 +80,7 @@ public sealed class TeamClient : IAsyncDisposable
         using var http = Http(Server);
         HttpResponseMessage response;
         try { response = await http.PostAsJsonAsync(register ? "/api/register" : "/api/login", new AuthRequest(email.Trim(), password, name?.Trim()), Json); }
-        catch (HttpRequestException) { throw new InvalidOperationException($"Não foi possível alcançar o servidor {Server}. Inicie o PCBoost.Server ou confira o endereço."); }
+        catch (HttpRequestException) { throw new InvalidOperationException($"Não foi possível alcançar o servidor {Server}. Inicie o servidor do Ximbuismo ou confira o endereço."); }
         catch (TaskCanceledException) { throw new InvalidOperationException($"O servidor {Server} não respondeu a tempo."); }
         if (!response.IsSuccessStatusCode)
         {

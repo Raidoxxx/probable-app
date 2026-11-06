@@ -18,7 +18,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>
 string dataPath = builder.Configuration["data"] ?? Environment.GetEnvironmentVariable("PCBOOST_DATA") ?? Path.Combine(AppContext.BaseDirectory, "data", "pcboost-team.db");
 builder.Services.AddSingleton(new Db(dataPath));
 // Instalador do app: arquivo local em downloads/ ou, se não houver, um link externo (ex.: GitHub Releases).
-const string SetupName = "PCBoost-Setup.exe";
+const string SetupName = "Ximbuismo-Setup.exe";
 string downloadsDir = builder.Configuration["downloads"] ?? Environment.GetEnvironmentVariable("PCBOOST_DOWNLOADS") ?? Path.Combine(AppContext.BaseDirectory, "downloads");
 string? downloadUrl = builder.Configuration["downloadUrl"] ?? Environment.GetEnvironmentVariable("PCBOOST_DOWNLOAD_URL");
 FileInfo? LocalSetup() { var file = new FileInfo(Path.Combine(downloadsDir, SetupName)); return file.Exists ? file : null; }
@@ -70,7 +70,7 @@ app.MapGet("/api/health", () =>
 {
     var local = LocalSetup();
     var download = new { available = local is not null || !string.IsNullOrEmpty(downloadUrl), size = local?.Length, version = appVersion };
-    return Results.Ok(new { ok = true, app = "PCBoost.Server", version = 1, download });
+    return Results.Ok(new { ok = true, app = "Ximbuismo.Server", version = 1, download });
 });
 app.MapMethods("/download", new[] { "GET", "HEAD" }, () =>
 {

@@ -1,4 +1,4 @@
-# PCBoost
+# Ximbuismo
 
 Aplicativo Windows em português do Brasil que funciona como o Discord, com dois extras: **Boost** de PC para jogos e **quadros de ideias e tarefas** dentro dos servidores. Visual escuro, linhas finas e arte em pontos.
 
@@ -32,8 +32,8 @@ PCBoost.sln       Solução com os três projetos
 
 ## Para quem usa: instalar
 
-Baixe o **PCBoost-Setup.exe** no site (https://probable-app.discloud.app), abra e clique em **Instalar**. Pronto: o app abre, você cria a conta e usa. Não precisa instalar .NET, abrir `.bat` nem configurar servidor.
-O instalador não pede administrador: coloca o app em `%LOCALAPPDATA%\Programs\PCBoost`, cria atalhos (Menu Iniciar e, se quiser, Área de Trabalho) e aparece em **Configurações do Windows → Aplicativos** para desinstalar.
+Baixe o **Ximbuismo-Setup.exe** no site (https://probable-app.discloud.app), abra e clique em **Instalar**. Pronto: o app abre, você cria a conta e usa. Não precisa instalar .NET, abrir `.bat` nem configurar servidor.
+O instalador não pede administrador: coloca o app em `%LOCALAPPDATA%\Programs\Ximbuismo`, cria atalhos (Menu Iniciar e, se quiser, Área de Trabalho) e aparece como **Ximbuismo** em **Configurações do Windows → Aplicativos** para desinstalar.
 
 ## Publicar: servidor na Discloud + instalador
 
@@ -52,20 +52,20 @@ O `discloud.config`, o `start.py` e o `requirements.txt` ficam na raiz do projet
    ```powershell
    powershell -ExecutionPolicy Bypass -File scripts/build-installer.ps1 -ServerUrl https://probable-app.discloud.app
    ```
-   Distribua `installer/PCBoost-Setup.exe` pelo site (abaixo).
+   Distribua `installer/Ximbuismo-Setup.exe` pelo site (abaixo).
 
 ### Site de download
 
 O servidor também serve o site em `/` (código em [apps/web](apps/web)). O botão **Baixar** aponta para `/download`, que entrega o instalador assim:
 
-1. se existir `downloads/PCBoost-Setup.exe` ao lado do servidor (ou na pasta de `PCBOOST_DOWNLOADS`), envia o arquivo;
+1. se existir `downloads/Ximbuismo-Setup.exe` ao lado do servidor (ou na pasta de `PCBOOST_DOWNLOADS`), envia o arquivo;
 2. senão, redireciona para `PCBOOST_DOWNLOAD_URL`.
 
 Na Discloud o .exe (~70 MB) não cabe junto com o servidor no limite de 100 MB do .zip. Por isso o `start.py` aponta `PCBOOST_DOWNLOAD_URL` para o anexo da última release do GitHub, e o instalador é publicado com:
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/publish-release.ps1
 ```
-O script gera o instalador e cria (ou atualiza) a release `v<Version>` com o `PCBoost-Setup.exe`. O repositório precisa ser **público** para qualquer pessoa baixar o anexo. Para manter o código privado, crie um repositório público só para releases, passe `-Repo dono/repo` ao script e troque o endereço em `PCBOOST_DOWNLOAD_URL` no `start.py`.
+O script gera o instalador e cria (ou atualiza) a release `v<Version>` com o `Ximbuismo-Setup.exe`. O repositório precisa ser **público** para qualquer pessoa baixar o anexo. Para manter o código privado, crie um repositório público só para releases, passe `-Repo dono/repo` ao script e troque o endereço em `PCBOOST_DOWNLOAD_URL` no `start.py`.
 
 O banco SQLite fica em `data/pcboost-team.db` dentro da aplicação na Discloud. Faça backup antes de apagar ou recriar a aplicação. Bancos da versão anterior são migrados sozinhos: cada servidor ganha `#geral`, `#ideias` e o canal de voz `Geral`, com as mensagens e ideias antigas.
 
@@ -103,7 +103,7 @@ Após aplicar um perfil, o app mostra RAM disponível antes/depois, horários e 
 6. Clique em **Testar plugin**. O app verifica ambiente/memória, executa Java, build e testes sequencialmente, mede memória novamente, instala o plugin com backup e inicia o servidor. Mais de um JAR pede seleção. Falta de margem permite revisar apps, tentar novamente ou prosseguir explicitamente com ambiente válido.
 7. Acompanhe log, código de saída, duração e evidências por etapa. **Testes passaram** exige relatórios JUnit recentes com testes executados e sem falhas, ou o padrão confirmatório configurado. Código zero sozinho deixa o resultado inconclusivo. Use **Parar** ao terminar.
 
-A substituição do JAR usa arquivo temporário no destino, backup da versão anterior e renomeação. O ambiente fica bloqueado contra sessões simultâneas do PCBoost. Portas são verificadas antes de executar; outro programa ainda pode ocupá-las depois da checagem, caso em que o log orienta o diagnóstico.
+A substituição do JAR usa arquivo temporário no destino, backup da versão anterior e renomeação. O ambiente fica bloqueado contra sessões simultâneas do Ximbuismo. Portas são verificadas antes de executar; outro programa ainda pode ocupá-las depois da checagem, caso em que o log orienta o diagnóstico.
 
 ## Métricas e dados locais
 
@@ -120,15 +120,15 @@ dotnet build PCBoost.sln -c Release
 dotnet run --project apps/server                     # servidor local em http://localhost:5080
 dotnet run --project apps/desktop                    # app (usa http://localhost:5080 por padrão)
 dotnet publish apps/desktop -c Release -o dist --no-self-contained
-Start-Process .\dist\PCBoost.exe --self-test -Wait
-Start-Process .\dist\PCBoost.exe --ui-test -Wait
-Start-Process .\dist\PCBoost.exe --boost-test -Wait          # liga e desliga o Boost e confere a restauração
-Start-Process .\dist\PCBoost.exe --integration-test -Wait
-Start-Process .\dist\PCBoost.exe --idle-test -Wait
+Start-Process .\dist\Ximbuismo.exe --self-test -Wait
+Start-Process .\dist\Ximbuismo.exe --ui-test -Wait
+Start-Process .\dist\Ximbuismo.exe --boost-test -Wait          # liga e desliga o Boost e confere a restauração
+Start-Process .\dist\Ximbuismo.exe --integration-test -Wait
+Start-Process .\dist\Ximbuismo.exe --idle-test -Wait
 # Com o servidor rodando: dois clientes reais testam contas, servidores, canais, chat, quadro, voz e presença
-Start-Process .\dist\PCBoost.exe '--team-test http://localhost:5080' -Wait
+Start-Process .\dist\Ximbuismo.exe '--team-test http://localhost:5080' -Wait
 # UI completa incluindo servidores (gera capturas *-preview.png)
-$env:PCBOOST_TEAM_TEST='http://localhost:5080'; Start-Process .\dist\PCBoost.exe --ui-test -Wait
+$env:PCBOOST_TEAM_TEST='http://localhost:5080'; Start-Process .\dist\Ximbuismo.exe --ui-test -Wait
 ```
 
 Confira os arquivos `*-test-result.txt` na pasta de trabalho. A integração requer JDK com javac/jar, Maven no PATH e dependências locais JUnit 5.12.2 e plugins Maven indicados em IntegrationTests.cs; usa modo offline. O caso Gradle usa uma distribuição em cache ou o caminho em **PCBOOST_TEST_GRADLE**; usa Maven Local para JUnit. Se não houver Gradle, registra SKIP. Não baixa ferramentas ou servidores. Fixtures e logs ficam em `dist/verification/<sessão>`.

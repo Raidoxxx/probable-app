@@ -1,0 +1,16 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <DrawingImage x:Key="BrandLogo">
+    <DrawingImage.Drawing>
+      <DrawingGroup>
+        <GeometryDrawing Brush="Transparent" Geometry="M0,0 H128 V128 H0 Z"/>
+        <GeometryDrawing Brush="#EDEDED" Geometry="M18,12 H34 L64,42 L94,12 H110 L76,46 H52 Z M18,116 L52,82 H76 L110,116 H94 L64,86 L34,116 Z"/>
+        <GeometryDrawing Geometry="M27,64 C47,48 81,48 101,64 C81,80 47,80 27,64 Z">
+          <GeometryDrawing.Pen><Pen Brush="#EDEDED" Thickness="3"/></GeometryDrawing.Pen>
+        </GeometryDrawing>
+        <GeometryDrawing Brush="#EDEDED">
+          <GeometryDrawing.Geometry><EllipseGeometry Center="64,64" RadiusX="7" RadiusY="7"/></GeometryDrawing.Geometry>
+        </GeometryDrawing>
+      </DrawingGroup>
+    </DrawingImage.Drawing>
+  </DrawingImage>
+</ResourceDictionary>

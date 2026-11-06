@@ -112,7 +112,7 @@ public static class Monitor
                     try { started = process.StartTime.ToUniversalTime(); } catch { }
                     try { session = process.SessionId; } catch { }
                     bool protectedProcess = IsProtected(process.Id, name, path, started, session);
-                    string status = path is null ? "Origem indisponível" : protectedProcess ? "Protegido no PCBoost" : "App da sua sessão";
+                    string status = path is null ? "Origem indisponível" : protectedProcess ? "Protegido no Ximbuismo" : "App da sua sessão";
                     if (path is not null && watched.Contains(path)) status = "★ Na sua lista";
                     rows.Add(new(process.Id, name, name + ".exe", path, started, bytes, session,
                         protectedProcess, status, 100d * bytes / memory.TotalPhys) { PrivateBytes = memoryReading.Private, PrivateCommit = memoryReading.Commit });

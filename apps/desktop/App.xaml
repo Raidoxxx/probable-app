@@ -1,5 +1,9 @@
 <Application x:Class="PCBoost.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Assets/Brand.xaml"/>
+      </ResourceDictionary.MergedDictionaries>
     <!-- Paleta: preto quase absoluto, linhas finas, texto claro, um único acento verde para "conectado". -->
     <Color x:Key="BgColor">#0A0A0A</Color>
     <SolidColorBrush x:Key="Bg" Color="#0A0A0A"/>
@@ -187,5 +191,6 @@
         <ControlTemplate.Triggers><Trigger Property="IsExpanded" Value="True"><Setter TargetName="Body" Property="Visibility" Value="Visible"/></Trigger></ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
+  </ResourceDictionary>
   </Application.Resources>
 </Application>

@@ -21,8 +21,8 @@ env.setdefault("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1")
 env.setdefault("ASPNETCORE_ENVIRONMENT", "Production")
 # Site de download (/): o .exe (~70 MB) não cabe no limite de 100 MB do .zip junto com o servidor,
 # então o botão "Baixar" redireciona para o anexo da última release no GitHub
-# (gerada por scripts/publish-release.ps1). Um arquivo em downloads/PCBoost-Setup.exe tem prioridade.
+# (gerada por scripts/publish-release.ps1). Um arquivo em downloads/Ximbuismo-Setup.exe tem prioridade.
 env.setdefault("PCBOOST_DOWNLOADS", os.path.join(here, "downloads"))
-env.setdefault("PCBOOST_DOWNLOAD_URL", "https://github.com/Raidoxxx/probable-app/releases/latest/download/PCBoost-Setup.exe")
+env.setdefault("PCBOOST_DOWNLOAD_URL", "https://github.com/Raidoxxx/probable-app/releases/latest/download/Ximbuismo-Setup.exe")
 print("PCBoost.Server iniciando na porta 8080; dados em", env["PCBOOST_DATA"], flush=True)
 os.execve(binary, [binary], env)
