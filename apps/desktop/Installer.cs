@@ -19,6 +19,7 @@ public static class Installer
     private static string StartMenuLink => System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), AppName + ".lnk");
     private static string DesktopLink => System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), AppName + ".lnk");
 
+    public static bool HasDesktopShortcut => File.Exists(DesktopLink);
     public static bool IsSetup => System.IO.Path.GetFileNameWithoutExtension(Environment.ProcessPath ?? "").Contains("setup", StringComparison.OrdinalIgnoreCase);
 
     public static void Install(bool desktopShortcut)

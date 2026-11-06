@@ -11,10 +11,13 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Endereço do servidor oficial gravado no app: dotnet publish -p:TeamServerUrl=https://seu-servidor -->
     <TeamServerUrl Condition="'$(TeamServerUrl)' == ''">http://localhost:5080</TeamServerUrl>
+    <!-- Repositório do GitHub cujas releases o app consulta para se atualizar: -p:UpdateRepo=dono/repo -->
+    <UpdateRepo Condition="'$(UpdateRepo)' == ''">Raidoxxx/probable-app</UpdateRepo>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets/Ximbuismo.ico" />
     <AssemblyMetadata Include="TeamServer" Value="$(TeamServerUrl)" />
+    <AssemblyMetadata Include="UpdateRepo" Value="$(UpdateRepo)" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\packages\shared\PCBoost.Shared.csproj" />

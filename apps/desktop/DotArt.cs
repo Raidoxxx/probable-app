@@ -46,19 +46,30 @@ public static class DotArt
     }
     private static double Fbm(double x, double y, int seed) => 0.55 * Noise(x, y, seed) + 0.3 * Noise(x * 2.1, y * 2.1, seed + 7) + 0.15 * Noise(x * 4.3, y * 4.3, seed + 13);
 
-    // Colunas clássicas em ruína, como fundo da tela de entrada.
+    // Colunas clássicas em ruína, como fundo da tela de entrada (imagem parada).
     public static BitmapSource Columns(int width, int height, int seed = 3)
     {
         width = Math.Max(16, width); height = Math.Max(16, height);
-        var canvas = new Canvas(width, height); int step = 3;
+        var canvas = new Canvas(width, height);
+        foreach (var p in ColumnDots(width, height, seed)) canvas.Dot(p.X, p.Y, p.Alpha, p.Size);
+        return canvas.Bitmap();
+    }
+
+    // Um ponto da arte das colunas, com a coluna a que pertence (para animar cada uma separadamente).
+    public readonly record struct ColumnDot(int X, int Y, double Alpha, int Size, int Column);
+
+    public static List<ColumnDot> ColumnDots(int width, int height, int seed = 3)
+    {
+        var dots = new List<ColumnDot>(width * height / 30); int step = 3;
         var columns = new[] { (X: 0.17, Top: 0.02, Half: 0.07, Broken: false), (X: 0.52, Top: 0.16, Half: 0.058, Broken: true), (X: 0.85, Top: 0.01, Half: 0.07, Broken: false) };
         double floor = height * 0.985;
         for (int gy = 0; gy < height; gy += step)
             for (int gx = 0; gx < width; gx += step)
             {
-                double best = 0;
-                foreach (var col in columns)
+                double best = 0; int owner = 0;
+                for (int ci = 0; ci < columns.Length; ci++)
                 {
+                    var col = columns[ci];
                     double cx = col.X * width, half = col.Half * width, top = col.Top * height;
                     double capH = height * 0.13, baseH = height * 0.065, shaftTop = top + capH, shaftBottom = floor - baseH;
                     double dx = gx - cx, density = 0;
@@ -87,11 +98,94 @@ public static class DotArt
                     // Andaimes: linhas verticais esparsas ao redor.
                     if (density == 0 && gy > top + capH * 0.4 && gy < floor && (Math.Abs(Math.Abs(dx) - half * 1.35) < step * 0.6 || Math.Abs(Math.Abs(dx) - half * 1.6) < step * 0.6))
                         density = Noise(gy * 0.02, dx > 0 ? 1 : 2, seed + 11) > 0.62 ? 0.5 : 0;
-                    best = Math.Max(best, density);
+                    if (density > best) { best = density; owner = ci; }
                 }
-                if (best > 0 && Hash(gx, gy, seed) < best) { double bright = Hash(gx, gy, seed + 4); canvas.Dot(gx, gy, 0.3 + 0.65 * bright * Math.Min(1, best + 0.3), bright > 0.82 && best > 0.6 ? 2 : 1); }
+                if (best > 0 && Hash(gx, gy, seed) < best)
+                {
+                    double bright = Hash(gx, gy, seed + 4);
+                    dots.Add(new ColumnDot(gx, gy, 0.3 + 0.65 * bright * Math.Min(1, best + 0.3), bright > 0.82 && best > 0.6 ? 2 : 1, owner));
+                }
             }
-        return canvas.Bitmap();
+        return dots;
+    }
+
+    // Colunas animadas: cada uma sobe do chão, fica de pé, desmorona de cima para baixo e se reconstrói.
+    public sealed class ColumnsAnimation
+    {
+        private const double Cycle = 15;                          // segundos por ciclo de cada coluna
+        private static readonly double[] Offsets = [0.0, 0.36, 0.68]; // colunas defasadas, nunca todas juntas
+        private readonly struct Particle(ColumnDot dot, float height, float jitter, float spread, float vx, float vy)
+        {
+            public readonly ColumnDot Dot = dot; public readonly float Height = height, Jitter = jitter, Spread = spread, Vx = vx, Vy = vy;
+        }
+        private readonly Particle[] particles;
+        private readonly Canvas canvas;
+        private readonly double floor, gravity;
+        public WriteableBitmap Bitmap { get; }
+        public int Width { get; }
+        public int Height { get; }
+
+        public ColumnsAnimation(int width, int height, int seed = 3)
+        {
+            Width = Math.Max(16, width); Height = Math.Max(16, height);
+            canvas = new Canvas(Width, Height);
+            floor = Height * 0.985; gravity = Height * 1.6;
+            var dots = ColumnDots(Width, Height, seed);
+            particles = new Particle[dots.Count];
+            for (int i = 0; i < dots.Count; i++)
+            {
+                var d = dots[i];
+                particles[i] = new Particle(d, (float)Math.Clamp((floor - d.Y) / floor, 0, 1),
+                    (float)Hash(d.X, d.Y, seed + 21), (float)((Hash(d.X, d.Y, seed + 22) - 0.5) * Width * 0.09),
+                    (float)((Hash(d.X, d.Y, seed + 23) - 0.5) * Width * 0.12), (float)(-Hash(d.X, d.Y, seed + 24) * Height * 0.25));
+            }
+            Bitmap = new WriteableBitmap(Width, Height, 96, 96, PixelFormats.Pbgra32, null);
+        }
+
+        private static double EaseOut(double t) => 1 - Math.Pow(1 - t, 3);
+
+        // Desenha o quadro do instante t (segundos). still = colunas inteiras, sem movimento.
+        public void Render(double t, bool still = false)
+        {
+            Array.Clear(canvas.Pixels);
+            foreach (ref readonly var p in particles.AsSpan())
+            {
+                var d = p.Dot;
+                if (still) { canvas.Dot(d.X, d.Y, d.Alpha, d.Size); continue; }
+                double s = ((t / Cycle + Offsets[d.Column % Offsets.Length]) % 1) * Cycle;
+                double x = d.X, y = d.Y, alpha = d.Alpha;
+                if (s < 4.5)
+                {
+                    // Construção: os pontos sobem do chão para o lugar, de baixo para cima.
+                    double start = 0.2 + p.Height * 3.0 + p.Jitter * 0.5, k = (s - start) / 0.9;
+                    if (k <= 0) continue;
+                    if (k < 1)
+                    {
+                        double e = EaseOut(k);
+                        x = d.X + p.Spread * (1 - e); y = floor + (d.Y - floor) * e; alpha *= Math.Min(1, k * 1.6);
+                    }
+                }
+                else if (s < 9)
+                {
+                    alpha *= 0.86 + 0.14 * Math.Sin(t * 2.2 + p.Jitter * 40); // brilho leve enquanto está de pé
+                }
+                else
+                {
+                    // Destruição: quebra do topo para a base e os pontos caem com gravidade até virar entulho.
+                    double broke = 9 + (1 - p.Height) * 2.2 + p.Jitter * 0.7, dt = s - broke;
+                    if (dt > 0)
+                    {
+                        x = d.X + p.Vx * dt; y = d.Y + p.Vy * dt + 0.5 * gravity * dt * dt;
+                        double rest = floor - p.Jitter * Height * 0.03;
+                        if (y > rest) y = rest;
+                        alpha *= Math.Clamp(1 - (dt - 0.5) / 1.8, 0, 1);
+                        if (alpha <= 0.01) continue;
+                    }
+                }
+                canvas.Dot(x, y, alpha, d.Size);
+            }
+            Bitmap.WritePixels(new Int32Rect(0, 0, Width, Height), canvas.Pixels, Width * 4, 0);
+        }
     }
 
     // Esfera de pontos; o hemisfério inferior acende conforme o uso (0..1). Chão de partículas embaixo.

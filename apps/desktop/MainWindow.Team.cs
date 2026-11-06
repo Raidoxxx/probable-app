@@ -37,6 +37,9 @@ public partial class MainWindow
     private string? teamTestNote;
     private string connectionLabel = "DESCONECTADO";
     private BitmapCacheKey loginArtKey;
+    private DotArt.ColumnsAnimation? loginArt;
+    private DispatcherTimer? loginArtTimer;
+    private readonly System.Diagnostics.Stopwatch loginClock = new();
 
     // Referências do conteúdo (recriadas a cada navegação).
     private StackPanel? chatPanel, membersPanel;
@@ -126,7 +129,7 @@ public partial class MainWindow
         LoginOverlay.Visibility = Visibility.Visible; RenderLoginArt();
         Dispatcher.BeginInvoke(() => (EmailBox.Text.Length == 0 ? (Control)EmailBox : PasswordBox).Focus(), DispatcherPriority.Input);
     }
-    private void HideLogin() { LoginOverlay.Visibility = Visibility.Collapsed; PasswordBox.Clear(); }
+    private void HideLogin() { LoginOverlay.Visibility = Visibility.Collapsed; PasswordBox.Clear(); loginArtTimer?.Stop(); }
     private void SwitchMode(bool register)
     {
         registerMode = register; NameRow.Visibility = register ? Visibility.Visible : Visibility.Collapsed;
@@ -136,12 +139,30 @@ public partial class MainWindow
     }
     private void SwitchModeClicked(object sender, RoutedEventArgs e) => SwitchMode(!registerMode);
     private void LoginArtSized(object sender, SizeChangedEventArgs e) => RenderLoginArt();
+    // Pilastras animadas: sobem, desmoronam e se reconstroem em loop enquanto a tela de entrada está aberta.
     private void RenderLoginArt()
     {
         if (LoginOverlay.Visibility != Visibility.Visible || LoginArtHost.ActualWidth < 20 || LoginArtHost.ActualHeight < 20) return;
         var key = new BitmapCacheKey((int)LoginArtHost.ActualWidth, (int)LoginArtHost.ActualHeight);
-        if (key == loginArtKey && LoginArt.Source is not null) return;
-        loginArtKey = key; LoginArt.Source = DotArt.Columns(key.Width, key.Height);
+        if (key != loginArtKey || loginArt is null)
+        {
+            loginArtKey = key; loginArt = new DotArt.ColumnsAnimation(key.Width, key.Height);
+            LoginArt.Source = loginArt.Bitmap;
+        }
+        // Capturas de teste e quem desligou animações no Windows veem as colunas inteiras, paradas.
+        bool still = uiTestMode || !SystemParameters.ClientAreaAnimation;
+        loginArt.Render(loginClock.Elapsed.TotalSeconds, still);
+        if (still) return;
+        if (loginArtTimer is null)
+        {
+            loginArtTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
+            loginArtTimer.Tick += (_, _) =>
+            {
+                if (LoginOverlay.Visibility != Visibility.Visible || WindowState == WindowState.Minimized || loginArt is null) return;
+                loginArt.Render(loginClock.Elapsed.TotalSeconds);
+            };
+        }
+        loginClock.Start(); loginArtTimer.Start();
     }
     private async void LoginClicked(object sender, RoutedEventArgs e)
     {

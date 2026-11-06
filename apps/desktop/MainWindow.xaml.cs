@@ -64,7 +64,7 @@ public partial class MainWindow : Window
         store = localStore ?? new LocalStore(); settings = store.Load(); telemetry = new(store, settings);
         team = new Team.TeamClient(store.Root);
         InitializeComponent();
-        InitTeam(); InitBoost();
+        InitTeam(); InitBoost(); InitUpdates();
         toastTimer.Tick += (_, _) => { toastTimer.Stop(); Toast.Visibility = Visibility.Collapsed; };
         Navigate(0);
         SourceInitialized += (_, _) => DarkTitleBar();
@@ -566,13 +566,16 @@ public partial class MainWindow : Window
         bool collapse = sidebarCollapsed;
         SidebarColumn.Width = new GridLength(collapse ? 0 : 240);
         if (metricsGrid is not null) metricsGrid.Columns = ActualWidth < 1120 ? 1 : 3;
+        // Tela de entrada: a arte das pilastras ganha mais espaço em janelas largas e cede espaço ao formulário nas estreitas.
+        LoginArtColumn.Width = new GridLength(ActualWidth < 1150 ? 0.85 : ActualWidth > 1700 ? 1.35 : 1.08, GridUnitType.Star);
     }
     private void LayoutChanged(object sender, SizeChangedEventArgs e) { if (Rail is not null) ApplyLayout(); }
     private void SettingsClicked(object sender, RoutedEventArgs e) => Navigate(PageSettings);
     private void ToggleSidebar(object sender, RoutedEventArgs e) { sidebarCollapsed = !sidebarCollapsed; ApplyLayout(); }
+    private bool BusyWithSession => sessionTask?.IsCompleted == false || session?.HasProcesses == true || game?.HasActiveProcesses == true;
     private void OnClosing(object? sender, CancelEventArgs e)
     {
-        if (sessionTask?.IsCompleted == false || session?.HasProcesses == true || game?.HasActiveProcesses == true)
+        if (BusyWithSession)
         { e.Cancel = true; Status("Há uma sessão iniciada pelo app em andamento. Solicite a parada em Desenvolvimento/Jogos. Se não terminar, confirme separadamente a parada forçada; depois feche a janela."); }
     }
     internal async Task RunUiTest()

@@ -56,6 +56,9 @@
         <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="10,0,16,0">
           <DockPanel>
             <Button DockPanel.Dock="Left" Content="☰" Padding="8,4" Click="ToggleSidebar" ToolTip="Mostrar ou esconder canais" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource GhostButton}"/>
+            <Button DockPanel.Dock="Right" x:Name="UpdateButton" Visibility="Collapsed" Click="UpdateClicked" Padding="10,5" Margin="10,0,0,0" VerticalAlignment="Center" BorderBrush="{StaticResource Accent}">
+              <TextBlock x:Name="UpdateLabel" Text="ATUALIZAR" FontFamily="{StaticResource Mono}" FontSize="10.5" Foreground="{StaticResource Accent}"/>
+            </Button>
             <StackPanel DockPanel.Dock="Right" x:Name="HeaderActions" Orientation="Horizontal" VerticalAlignment="Center"/>
             <TextBlock DockPanel.Dock="Right" x:Name="CollectionState" Style="{StaticResource Eyebrow}" VerticalAlignment="Center" Margin="12,0"/>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
