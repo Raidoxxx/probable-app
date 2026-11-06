@@ -1,0 +1,8 @@
+* text=auto
+# Arquivos lidos no Linux (Discloud/Docker) ficam sempre com LF
+*.py text eol=lf
+*.config text eol=lf
+Dockerfile text eol=lf
+*.dockerignore text eol=lf
+*.sh text eol=lf
+*.png binary

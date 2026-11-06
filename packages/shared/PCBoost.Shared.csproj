@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Contratos (DTOs) trocados entre apps/desktop e apps/server. Sem dependências. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>PCBoost.Shared</RootNamespace>
+  </PropertyGroup>
+</Project>

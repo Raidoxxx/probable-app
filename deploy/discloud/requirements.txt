@@ -1,0 +1,1 @@
+# Sem dependências Python: start.py só inicia o servidor .NET compilado em server/.

@@ -1,0 +1,6 @@
+*
+!Directory.Build.props
+!packages/shared/
+!apps/server/
+**/bin/
+**/obj/

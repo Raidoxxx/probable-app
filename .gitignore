@@ -1,0 +1,29 @@
+# Build
+bin/
+obj/
+*.user
+.vs/
+
+# Saídas locais (builds, instalador, pacote da Discloud)
+/dist*/
+/installer/
+/deploy/discloud/server/
+/deploy/*.zip
+
+# Resultados e capturas geradas pelos testes (rodam na pasta atual)
+/*-test-result.txt
+/*-preview.png
+/apps/desktop/*-test-result.txt
+/apps/desktop/*-preview.png
+ui-test-state/
+verification/
+
+# Dados locais do servidor
+*.db
+*.db-shm
+*.db-wal
+/deploy/discloud/data/
+
+# Ferramentas
+/graphify-out/
+/.github/modernize/
