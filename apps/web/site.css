@@ -34,6 +34,7 @@ code { font: 0.9em var(--mono); background: var(--field); border: 1px solid var(
 ::selection { background: var(--ink); color: var(--bg); }
 
 #field { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+#energy { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; }
 
 /* ---------- navegação ---------- */
 .nav {
@@ -99,7 +100,29 @@ h1 {
   display: grid; place-items: center;
   border: 2px solid var(--ink); background: var(--bg);
   box-shadow: 0 0 0 10px var(--bg), 0 0 0 11px var(--line-strong);
+  color: var(--ink); padding: 0; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .3s, box-shadow .5s, background .5s, color .5s;
 }
+.ring:hover { box-shadow: 0 0 0 10px var(--bg), 0 0 0 11px #777, 0 0 38px #ffffff14; }
+.ring:focus-visible { outline: 2px solid var(--ink); outline-offset: 17px; }
+.ring:disabled { cursor: wait; }
+.ring span { position: relative; z-index: 1; }
+.ring::after { content: ""; position: absolute; inset: -12px; border-radius: inherit; border: 1px solid transparent; }
+.boost-charging .ring { transform: scale(.91); box-shadow: 0 0 0 10px var(--bg), 0 0 0 11px #aaa, 0 0 65px #ffffff30; }
+.boost-charging .ring::after { border-top-color: #fff; border-right-color: #ffffff55; animation: charge-orbit .65s linear infinite; }
+.boost-charging .ring span { animation: charge-text 1.4s ease-in both; }
+.boost-burst .ring { transform: scale(1.06); background: #ededed; color: #0a0a0a; box-shadow: 0 0 0 10px #ededed0d, 0 0 90px #ffffff45; }
+.boost-energized { --line: #404040; --line-strong: #666; --muted: #aaa; --dim: #828282; }
+.boost-energized .ring { background: #ededed; color: #0a0a0a; box-shadow: 0 0 0 10px var(--bg), 0 0 0 11px #777, 0 0 60px #ffffff26; }
+.boost-energized .ring:hover { transform: scale(1.025); }
+.boost-energized .caption { color: var(--ink); }
+.boost-energized h1, .boost-energized h2 { text-shadow: 0 0 32px #ffffff26; }
+.boost-energized .shot, .boost-energized .stat-grid, .boost-energized .steps { box-shadow: 0 0 32px #ffffff08; }
+.boost-energized .btn-primary, .boost-energized .btn-small { box-shadow: 0 0 24px #ffffff20; }
+.nav, .feature, .install, .foot, .shot, .stat-grid, .steps { transition: border-color .7s, box-shadow .7s; }
+@keyframes charge-orbit { to { transform: rotate(360deg); } }
+@keyframes charge-text { to { letter-spacing: .18em; text-shadow: 0 0 18px #fff; } }
 .ring span { font: 500 clamp(20px, 2.6vw, 28px)/1 var(--mono); letter-spacing: 0.08em; }
 .caption { position: absolute; left: 0; right: 0; bottom: 4%; margin: 0; text-align: center; color: var(--dim); }
 
@@ -177,4 +200,6 @@ h2 { font: 600 clamp(28px, 3.6vw, 42px)/1.1 var(--sans); letter-spacing: -0.02em
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .btn { transition: none; }
+  .ring, .nav, .feature, .install, .foot, .shot, .stat-grid, .steps { transition: none; }
+  .ring::after, .ring span { animation: none; }
 }

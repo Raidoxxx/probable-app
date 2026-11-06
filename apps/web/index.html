@@ -14,6 +14,7 @@
 </head>
 <body>
   <canvas id="field" aria-hidden="true"></canvas>
+  <canvas id="energy" aria-hidden="true"></canvas>
 
   <header class="nav">
     <a class="brand" href="#topo" aria-label="Ximbuismo, início">
@@ -45,10 +46,10 @@
         <p class="meta"><span>Ximbuismo-Setup.exe</span><span>64 BITS</span><span data-size>~70 MB</span></p>
         <p class="platform-note" data-platform-note hidden>O Ximbuismo é para Windows. Abra este site no seu PC para baixar.</p>
       </div>
-      <div class="hero-art" aria-hidden="true">
-        <canvas id="sphere"></canvas>
-        <div class="ring"><span>BOOST</span></div>
-        <p class="caption">UM CLIQUE ANTES DE JOGAR</p>
+      <div class="hero-art">
+        <canvas id="sphere" aria-hidden="true"></canvas>
+        <button class="ring" id="boost-trigger" type="button" aria-label="Energizar o site" aria-pressed="false" aria-describedby="boost-caption"><span>BOOST</span></button>
+        <p class="caption" id="boost-caption" role="status">CLIQUE PARA ENERGIZAR</p>
       </div>
     </section>
 
