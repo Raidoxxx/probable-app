@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using PCBoost.Server;
 using PCBoost.Shared;
 
-var builder = WebApplication.CreateBuilder(args);
+// ContentRoot fixo na pasta do executável: o site (wwwroot/) é achado mesmo quando o processo
+// é iniciado de outra pasta (como o start.py da Discloud faz).
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, ContentRootPath = AppContext.BaseDirectory });
 // Hospedagem: a maioria dos provedores (Render, Railway, Fly, Azure) informa a porta em PORT e põe HTTPS na frente.
 if (string.IsNullOrEmpty(builder.Configuration["urls"]) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
     builder.WebHost.UseUrls("http://0.0.0.0:" + (Environment.GetEnvironmentVariable("PORT") is { Length: > 0 } port ? port : "5080"));
@@ -15,6 +17,12 @@ builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>
 });
 string dataPath = builder.Configuration["data"] ?? Environment.GetEnvironmentVariable("PCBOOST_DATA") ?? Path.Combine(AppContext.BaseDirectory, "data", "pcboost-team.db");
 builder.Services.AddSingleton(new Db(dataPath));
+// Instalador do app: arquivo local em downloads/ ou, se não houver, um link externo (ex.: GitHub Releases).
+const string SetupName = "PCBoost-Setup.exe";
+string downloadsDir = builder.Configuration["downloads"] ?? Environment.GetEnvironmentVariable("PCBOOST_DOWNLOADS") ?? Path.Combine(AppContext.BaseDirectory, "downloads");
+string? downloadUrl = builder.Configuration["downloadUrl"] ?? Environment.GetEnvironmentVariable("PCBOOST_DOWNLOAD_URL");
+FileInfo? LocalSetup() { var file = new FileInfo(Path.Combine(downloadsDir, SetupName)); return file.Exists ? file : null; }
+string appVersion = typeof(Db).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
 builder.Services.AddSingleton<Presence>();
 builder.Services.AddSignalR(o => { o.MaximumReceiveMessageSize = 64 * 1024; o.EnableDetailedErrors = false; });
 builder.Services.AddRateLimiter(o =>
@@ -28,6 +36,12 @@ var app = builder.Build();
 app.UseForwardedHeaders();
 app.UseWebSockets();
 app.UseRateLimiter();
+app.UseDefaultFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl =
+        ctx.File.Name.EndsWith(".html") ? "no-cache" : "public, max-age=86400"
+});
 
 // O hub só aceita conexões com token válido (enviado pelo cliente SignalR como access_token).
 app.Use(async (http, next) =>
@@ -52,7 +66,19 @@ static string? Problem(AuthRequest r, bool register)
     return null;
 }
 
-app.MapGet("/api/health", () => Results.Ok(new { ok = true, app = "PCBoost.Server", version = 1 }));
+app.MapGet("/api/health", () =>
+{
+    var local = LocalSetup();
+    var download = new { available = local is not null || !string.IsNullOrEmpty(downloadUrl), size = local?.Length, version = appVersion };
+    return Results.Ok(new { ok = true, app = "PCBoost.Server", version = 1, download });
+});
+app.MapMethods("/download", new[] { "GET", "HEAD" }, () =>
+{
+    if (LocalSetup() is FileInfo local)
+        return Results.File(local.FullName, "application/octet-stream", SetupName, local.LastWriteTimeUtc, enableRangeProcessing: true);
+    if (!string.IsNullOrEmpty(downloadUrl)) return Results.Redirect(downloadUrl);
+    return Results.Text("O instalador ainda não foi publicado. Tente de novo mais tarde.", "text/plain; charset=utf-8", statusCode: 404);
+});
 app.MapPost("/api/register", (AuthRequest r, Db db) =>
 {
     if (Problem(r, true) is string error) return Results.BadRequest(new ErrorResponse(error));

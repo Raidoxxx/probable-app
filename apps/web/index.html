@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PCBoost — Boost, servidores e quadros</title>
+  <meta name="description" content="Um clique para liberar o PC antes de jogar. Servidores com chat e voz. Quadros de ideias e tarefas para o time. Grátis para Windows.">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta property="og:title" content="PCBoost">
+  <meta property="og:description" content="Boost de PC, servidores com chat e voz, e quadros de ideias — num app só.">
+  <meta property="og:image" content="assets/ui.png">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <canvas id="field" aria-hidden="true"></canvas>
+
+  <header class="nav">
+    <a class="brand" href="#topo" aria-label="PCBoost, início">
+      <img src="assets/icon.svg" alt="" width="28" height="28">
+      <span>PCBOOST</span>
+    </a>
+    <nav class="links" aria-label="Seções">
+      <a href="#boost">BOOST</a>
+      <a href="#servidores">SERVIDORES</a>
+      <a href="#quadros">QUADROS</a>
+      <a href="#instalar">INSTALAR</a>
+    </nav>
+    <a class="btn btn-small" href="/download" data-download>BAIXAR</a>
+  </header>
+
+  <main id="topo">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="dot" data-status-dot></span><span data-status>WINDOWS 10 · 11 — GRÁTIS</span></p>
+        <h1>Jogue, converse e trabalhe no mesmo app.</h1>
+        <p class="lead">Um botão de <strong>Boost</strong> que libera o PC antes de abrir o jogo. Servidores com <strong>chat e voz</strong> para o seu grupo. <strong>Quadros</strong> de ideias e tarefas dentro de cada servidor.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="/download" data-download>
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 1v9m0 0L4.5 6.5M8 10l3.5-3.5M2 13.5h12" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+            BAIXAR PARA WINDOWS
+          </a>
+          <a class="btn btn-ghost" href="#boost">VER COMO FUNCIONA</a>
+        </div>
+        <p class="meta"><span>PCBoost-Setup.exe</span><span>64 BITS</span><span data-size>~70 MB</span></p>
+        <p class="platform-note" data-platform-note hidden>O PCBoost é para Windows. Abra este site no seu PC para baixar.</p>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <canvas id="sphere"></canvas>
+        <div class="ring"><span>BOOST</span></div>
+        <p class="caption">UM CLIQUE ANTES DE JOGAR</p>
+      </div>
+    </section>
+
+    <figure class="shot shot-hero">
+      <div class="shot-bar"><i></i><i></i><i></i><span>PCBOOST — BOOST</span></div>
+      <img src="assets/ui.png" alt="Tela de Boost do PCBoost: botão BOOST no centro e a grade com os jogos encontrados no PC." width="1344" height="861" loading="eager">
+    </figure>
+
+    <section class="feature" id="boost">
+      <div class="feature-copy">
+        <p class="index">01 / BOOST</p>
+        <h2>Um botão. Sem configuração.</h2>
+        <p>O PCBoost encontra os jogos instalados na Steam, Epic, GOG, Ubisoft e Riot e mostra as capas. Clique num jogo e ele recebe o boost e abre.</p>
+        <ul class="list">
+          <li><b>Energia</b> plano de desempenho enquanto você joga</li>
+          <li><b>Prioridade</b> o jogo em alta, os programas de fundo em baixa</li>
+          <li><b>Memória</b> libera a RAM presa em processos parados</li>
+          <li><b>Volta ao normal</b> tudo é desfeito quando o jogo fecha</li>
+        </ul>
+      </div>
+      <div class="stat-grid" aria-label="O que o boost muda">
+        <div class="stat"><span class="k">PLANO</span><span class="v">DESEMPENHO</span></div>
+        <div class="stat"><span class="k">JOGO</span><span class="v">ALTA</span></div>
+        <div class="stat"><span class="k">FUNDO</span><span class="v">BAIXA</span></div>
+        <div class="stat"><span class="k">AO SAIR</span><span class="v ok">RESTAURA</span></div>
+      </div>
+    </section>
+
+    <section class="feature feature-shot" id="servidores">
+      <div class="feature-copy">
+        <p class="index">02 / SERVIDORES</p>
+        <h2>Seu grupo, com chat e voz.</h2>
+        <p>Crie um servidor e chame os amigos pelo código de convite. Cada servidor tem canais de texto, canais de voz e a lista de quem está online, do jeito que você já conhece.</p>
+        <ul class="list">
+          <li><b>Texto</b> canais separados por assunto</li>
+          <li><b>Voz</b> entre e saia da chamada com um clique, com microfone e áudio no painel</li>
+          <li><b>Convite</b> um código curto para entrar</li>
+        </ul>
+      </div>
+      <div class="stack">
+        <figure class="shot"><div class="shot-bar"><i></i><i></i><i></i><span># GERAL</span></div><img src="assets/groups.png" alt="Canal de texto #geral com mensagens e a lista de membros online." width="1344" height="901" loading="lazy"></figure>
+        <figure class="shot shot-back"><div class="shot-bar"><i></i><i></i><i></i><span>VOZ — GERAL</span></div><img src="assets/voice.png" alt="Canal de voz com um participante na chamada." width="1344" height="901" loading="lazy"></figure>
+      </div>
+    </section>
+
+    <section class="feature feature-shot reverse" id="quadros">
+      <div class="feature-copy">
+        <p class="index">03 / QUADROS</p>
+        <h2>Ideias e tarefas no mesmo lugar da conversa.</h2>
+        <p>Cada servidor pode ter quadros com colunas Ideia, Em andamento e Concluído. Marque o tipo, a prioridade e o responsável, e vote no que vale fazer primeiro.</p>
+        <ul class="list">
+          <li><b>Tipos</b> ideia, tarefa e problema</li>
+          <li><b>Votos</b> o time mostra o que importa</li>
+          <li><b>Ao vivo</b> todo mundo vê as mudanças na hora</li>
+        </ul>
+      </div>
+      <figure class="shot"><div class="shot-bar"><i></i><i></i><i></i><span>QUADRO — IDEIAS</span></div><img src="assets/ideas.png" alt="Quadro de ideias com cartões nas colunas Ideias, Em andamento e Concluído." width="1344" height="901" loading="lazy"></figure>
+    </section>
+
+    <section class="install" id="instalar">
+      <p class="index">INSTALAR</p>
+      <h2>Pronto em menos de um minuto.</h2>
+      <ol class="steps">
+        <li>
+          <span class="n">01</span>
+          <h3>Baixe</h3>
+          <p>Clique em <b>Baixar para Windows</b> e salve o <code>PCBoost-Setup.exe</code>.</p>
+        </li>
+        <li>
+          <span class="n">02</span>
+          <h3>Abra e instale</h3>
+          <p>Clique em <b>Instalar</b>. Não precisa de administrador. Se o Windows mostrar “O Windows protegeu o computador”, clique em <b>Mais informações</b> e depois em <b>Executar assim mesmo</b>.</p>
+        </li>
+        <li>
+          <span class="n">03</span>
+          <h3>Crie sua conta</h3>
+          <p>Abra o PCBoost pelo atalho, crie a conta e entre num servidor ou crie o seu.</p>
+        </li>
+      </ol>
+      <div class="cta">
+        <a class="btn btn-primary" href="/download" data-download>BAIXAR PARA WINDOWS</a>
+        <p class="fine">Para desinstalar: <b>Configurações do Windows › Aplicativos</b>, procure por PCBoost.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span class="brand small"><img src="assets/icon.svg" alt="" width="18" height="18">PCBOOST</span>
+    <span class="status"><span class="dot" data-status-dot></span><span data-status-foot>VERIFICANDO SERVIDOR…</span></span>
+    <span data-version>WINDOWS 10 · 11 · 64 BITS</span>
+  </footer>
+
+  <script src="site.js" defer></script>
+</body>
+</html>

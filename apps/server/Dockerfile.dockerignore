@@ -2,5 +2,6 @@
 !Directory.Build.props
 !packages/shared/
 !apps/server/
+!apps/web/
 **/bin/
 **/obj/

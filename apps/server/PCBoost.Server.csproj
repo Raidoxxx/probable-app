@@ -10,4 +10,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
   </ItemGroup>
+  <!-- Site de download (apps/web) servido pelo próprio servidor, em wwwroot/. -->
+  <ItemGroup>
+    <Content Include="..\web\**\*" LinkBase="wwwroot" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

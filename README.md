@@ -19,16 +19,17 @@ O Boost funciona sem conta. Servidores, chat, voz e quadros usam o servidor onli
 ```
 apps/desktop      App Windows (WPF, .NET 8): Boost + cliente estilo Discord
 apps/server       Servidor (ASP.NET Core 8 + SignalR + SQLite): contas, servidores, canais, chat, voz e quadros
+apps/web          Site de download (HTML/CSS/JS estático), servido pelo próprio servidor em /
 packages/shared   Contratos (DTOs) usados pelo app e pelo servidor
 deploy/discloud   discloud.config + start.py (lançador) para hospedar o servidor na Discloud
-scripts/          build-installer.ps1 e deploy-discloud.ps1
+scripts/          build-installer.ps1, publish-release.ps1 e deploy-discloud.ps1
 docs/             Imagens e validação
 PCBoost.sln       Solução com os três projetos
 ```
 
 ## Para quem usa: instalar
 
-Baixe e abra **PCBoost-Setup.exe**, clique em **Instalar**. Pronto: o app abre, você cria a conta e usa. Não precisa instalar .NET, abrir `.bat` nem configurar servidor.
+Baixe o **PCBoost-Setup.exe** no site (https://probable-app.discloud.app), abra e clique em **Instalar**. Pronto: o app abre, você cria a conta e usa. Não precisa instalar .NET, abrir `.bat` nem configurar servidor.
 O instalador não pede administrador: coloca o app em `%LOCALAPPDATA%\Programs\PCBoost`, cria atalhos (Menu Iniciar e, se quiser, Área de Trabalho) e aparece em **Configurações do Windows → Aplicativos** para desinstalar.
 
 ## Publicar: servidor na Discloud + instalador
@@ -46,11 +47,24 @@ A Discloud não roda .NET nativamente. Por isso o servidor vai **compilado como 
    ```powershell
    powershell -ExecutionPolicy Bypass -File scripts/build-installer.ps1 -ServerUrl https://probable-app.discloud.app
    ```
-   Distribua `installer/PCBoost-Setup.exe`.
+   Distribua `installer/PCBoost-Setup.exe` pelo site (abaixo).
+
+### Site de download
+
+O servidor também serve o site em `/` (código em [apps/web](apps/web)). O botão **Baixar** aponta para `/download`, que entrega o instalador assim:
+
+1. se existir `downloads/PCBoost-Setup.exe` ao lado do servidor (ou na pasta de `PCBOOST_DOWNLOADS`), envia o arquivo;
+2. senão, redireciona para `PCBOOST_DOWNLOAD_URL`.
+
+Na Discloud o .exe (~70 MB) não cabe junto com o servidor no limite de 100 MB do .zip. Por isso o `start.py` aponta `PCBOOST_DOWNLOAD_URL` para o anexo da última release do GitHub, e o instalador é publicado com:
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/publish-release.ps1
+```
+O script gera o instalador e cria (ou atualiza) a release `v<Version>` com o `PCBoost-Setup.exe`. O repositório precisa ser **público** para qualquer pessoa baixar o anexo. Para manter o código privado, crie um repositório público só para releases, passe `-Repo dono/repo` ao script e troque o endereço em `PCBOOST_DOWNLOAD_URL` no `start.py`.
 
 O banco SQLite fica em `data/pcboost-team.db` dentro da aplicação na Discloud. Faça backup antes de apagar ou recriar a aplicação. Bancos da versão anterior são migrados sozinhos: cada servidor ganha `#geral`, `#ideias` e o canal de voz `Geral`, com as mensagens e ideias antigas.
 
-Fora da Discloud, o servidor também roda em Docker (`docker build -f apps/server/Dockerfile -t pcboost-server .`) ou em qualquer host .NET 8. Ele usa a porta da variável `PORT`, o banco em `PCBOOST_DATA` e entende HTTPS atrás de proxy.
+Fora da Discloud, o servidor também roda em Docker (`docker build -f apps/server/Dockerfile -t pcboost-server .`) ou em qualquer host .NET 8. Ele usa a porta da variável `PORT`, o banco em `PCBOOST_DATA`, o instalador em `PCBOOST_DOWNLOADS` ou `PCBOOST_DOWNLOAD_URL`, e entende HTTPS atrás de proxy.
 
 ## Servidores: como funciona
 
