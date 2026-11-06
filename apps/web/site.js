@@ -22,7 +22,7 @@
     trigger.setAttribute("aria-pressed", String(next === "burst" || next === "energized"));
     trigger.setAttribute("aria-label", next === "energized" ? "Desligar a energia do site" : "Energizar o site");
     label.textContent = next === "charging" ? "CARGA" : next === "idle" ? "BOOST" : "BOOST ON";
-    caption.textContent = next === "charging" ? "CONCENTRANDO ENERGIA" : next === "idle" ? "CLIQUE PARA ENERGIZAR" : "ENERGIA NO MÁXIMO · CLIQUE PARA DESLIGAR";
+    caption.textContent = next === "charging" ? "CONCENTRANDO ENERGIA" : next === "idle" ? "" : "ENERGIA NO MÁXIMO · CLIQUE PARA DESLIGAR";
   }
   function resizeCanvas(canvas, context, w, h) {
     canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
