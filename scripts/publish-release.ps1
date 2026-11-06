@@ -4,7 +4,7 @@
 # que qualquer pessoa consiga baixar o anexo.
 # Uso:  powershell -ExecutionPolicy Bypass -File scripts/publish-release.ps1 [-ServerUrl https://...] [-Repo dono/repo]
 param(
-    [string]$ServerUrl = "https://probable-app.discloud.app",
+    [string]$ServerUrl = "https://probable-app.discloud.dev",
     [string]$Repo = "Raidoxxx/probable-app"
 )
 $ErrorActionPreference = "Stop"

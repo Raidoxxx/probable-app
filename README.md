@@ -32,7 +32,7 @@ PCBoost.sln       Solução com os três projetos
 
 ## Para quem usa: instalar
 
-Baixe o **Ximbuismo-Setup.exe** no site (https://probable-app.discloud.app), abra e clique em **Instalar**. Pronto: o app abre, você cria a conta e usa. Não precisa instalar .NET, abrir `.bat` nem configurar servidor.
+Baixe o **Ximbuismo-Setup.exe** no site (https://probable-app.discloud.dev), abra e clique em **Instalar**. Pronto: o app abre, você cria a conta e usa. Não precisa instalar .NET, abrir `.bat` nem configurar servidor.
 O instalador não pede administrador: coloca o app em `%LOCALAPPDATA%\Programs\Ximbuismo`, cria atalhos (Menu Iniciar e, se quiser, Área de Trabalho) e aparece como **Ximbuismo** em **Configurações do Windows → Aplicativos** para desinstalar.
 
 ## Publicar: servidor na Discloud + instalador
@@ -46,11 +46,11 @@ O `discloud.config`, o `start.py` e o `requirements.txt` ficam na raiz do projet
    powershell -ExecutionPolicy Bypass -File scripts/deploy-discloud.ps1
    ```
    Sai `deploy/pcboost-discloud.zip`, com `discloud.config`, `start.py` e a pasta `server/` na raiz.
-2. **Envie o .zip** pelo painel da Discloud ou pela CLI (`discloud upload`, e `discloud commit` nas atualizações). O [discloud.config](discloud.config) usa `TYPE=site` e `ID=probable-app`, então o endereço fica `https://probable-app.discloud.app`. Sites na Discloud pedem o **plano Platinum** e pelo menos **512 MB de RAM**. O subdomínio `probable-app` precisa estar livre na sua conta; se escolher outro, troque `ID` e o endereço do passo 3.
-3. **Teste** `https://probable-app.discloud.app/api/health`. Deve responder `{"ok":true,...}`.
+2. **Envie o .zip** pelo painel da Discloud ou pela CLI (`discloud upload`, e `discloud commit` nas atualizações). O [discloud.config](discloud.config) usa `TYPE=site` e `ID=probable-app`, então o endereço fica `https://probable-app.discloud.dev`. Sites na Discloud pedem o **plano Platinum** e pelo menos **512 MB de RAM**. O subdomínio `probable-app` precisa estar livre na sua conta; se escolher outro, troque `ID` e o endereço do passo 3.
+3. **Teste** `https://probable-app.discloud.dev/api/health`. Deve responder `{"ok":true,...}`.
 4. **Gere o instalador apontando para ele** (o endereço fica gravado no app e o campo de endereço some da tela de entrada):
    ```powershell
-   powershell -ExecutionPolicy Bypass -File scripts/build-installer.ps1 -ServerUrl https://probable-app.discloud.app
+   powershell -ExecutionPolicy Bypass -File scripts/build-installer.ps1 -ServerUrl https://probable-app.discloud.dev
    ```
    Distribua `installer/Ximbuismo-Setup.exe` pelo site (abaixo).
 

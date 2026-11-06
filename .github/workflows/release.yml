@@ -26,7 +26,7 @@ concurrency:
   cancel-in-progress: false   # uma release por vez, na ordem dos pushes
 
 env:
-  SERVER_URL: https://probable-app.discloud.app
+  SERVER_URL: https://probable-app.discloud.dev
 
 jobs:
   release:

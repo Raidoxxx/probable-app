@@ -1,7 +1,7 @@
 # Gera installer/Ximbuismo-Setup.exe já apontando para o servidor online.
 # Uso:  powershell -ExecutionPolicy Bypass -File scripts/build-installer.ps1 [-ServerUrl https://seu-servidor] [-Version 1.2.3]
 param(
-    [string]$ServerUrl = "https://probable-app.discloud.app",
+    [string]$ServerUrl = "https://probable-app.discloud.dev",
     [string]$Version = ""   # vazio = usa <Version> do Directory.Build.props
 )
 $ErrorActionPreference = "Stop"
