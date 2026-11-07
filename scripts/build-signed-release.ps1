@@ -41,7 +41,11 @@ try {
     & (Join-Path $PSScriptRoot 'build-installer.ps1') -Version $Version -ServerUrl $ServerUrl -UpdateRepo $Repository -UpdateSignerSha256 $pin -UpdateManifestPublicKey $publicKey
     $setup = Join-Path $releaseRoot 'installer/Ximbuismo-Setup.exe'
     $signed = Set-AuthenticodeSignature -LiteralPath $setup -Certificate $certificate -HashAlgorithm SHA256 -TimestampServer 'http://timestamp.digicert.com'
-    if ($signed.Status -ne 'Valid') { throw "Assinatura do instalador inválida: $($signed.Status)" }
+    # Certificado próprio (autoassinado) fica como UnknownError ("raiz não confiável") no runner; o app aceita
+    # esse caso só para o certificado fixado no build. Qualquer outro estado (ex.: HashMismatch) é recusado.
+    $selfSigned = $certificate.Subject -eq $certificate.Issuer
+    $accepted = $signed.Status -eq 'Valid' -or ($selfSigned -and $signed.Status -eq 'UnknownError')
+    if (-not $accepted -or $signed.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) { throw "Assinatura do instalador inválida: $($signed.Status) $($signed.StatusMessage)" }
     $manifest = [ordered]@{
         Version = $Version
         DownloadUrl = "https://github.com/$Repository/releases/download/v$Version/Ximbuismo-Setup.exe"

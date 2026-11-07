@@ -195,6 +195,22 @@ try
     await Rejected(() => Task.Run(() => UpdateTrust.VerifyInstaller(serverDll)), "unsigned installer never accepted");
     await Rejected(() => Task.Run(() => UpdateTrust.VerifyAuthenticode(serverDll, new string('A', 64))), "native Authenticode rejects unsigned binary even with configured publisher");
 
+    // Certificado próprio (autoassinado, raiz desconhecida do Windows): só o certificado fixado passa, e só com o arquivo íntegro.
+    string signedCopy = Path.Combine(root, "self-signed.dll"); File.Copy(serverDll, signedCopy);
+    var signer = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
+    foreach (var arg in new[] { "-NoProfile", "-NonInteractive", "-Command",
+        "$ErrorActionPreference='Stop'; $c = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=Ximbuismo Regression' -CertStoreLocation Cert:\\CurrentUser\\My -KeyAlgorithm RSA -KeyLength 2048; " +
+        $"try {{ $s = Set-AuthenticodeSignature -LiteralPath '{signedCopy}' -Certificate $c -HashAlgorithm SHA256; if (-not $s.SignerCertificate) {{ throw 'nao assinou' }} }} finally {{ Remove-Item ('Cert:\\CurrentUser\\My\\' + $c.Thumbprint) -Force }}" })
+        signer.ArgumentList.Add(arg);
+    using (var signing = Process.Start(signer)!) { string error = await signing.StandardError.ReadToEndAsync(); await signing.WaitForExitAsync(); Check(signing.ExitCode == 0, "self-signed test binary created " + error.Trim()); }
+#pragma warning disable SYSLIB0057
+    string selfPin; using (var cert = new System.Security.Cryptography.X509Certificates.X509Certificate2(System.Security.Cryptography.X509Certificates.X509Certificate.CreateFromSignedFile(signedCopy))) selfPin = cert.GetCertHashString(HashAlgorithmName.SHA256);
+#pragma warning restore SYSLIB0057
+    UpdateTrust.VerifyAuthenticode(signedCopy, selfPin); Check(true, "self-signed installer accepted with its pinned certificate");
+    await Rejected(() => Task.Run(() => UpdateTrust.VerifyAuthenticode(signedCopy, new string('A', 64))), "self-signed installer rejected with another pinned certificate");
+    string tamperedCopy = Path.Combine(root, "self-signed-tampered.dll"); byte[] tampered = File.ReadAllBytes(signedCopy); tampered[tampered.Length / 3] ^= 0xFF; File.WriteAllBytes(tamperedCopy, tampered);
+    await Rejected(() => Task.Run(() => UpdateTrust.VerifyAuthenticode(tamperedCopy, selfPin)), "tampered self-signed installer rejected even with pinned certificate");
+
     string boostRoot = Path.Combine(root, "boost"); Directory.CreateDirectory(boostRoot);
     var childStart = new ProcessStartInfo(sdk) { UseShellExecute = false, CreateNoWindow = true };
     childStart.ArgumentList.Add(Assembly.GetExecutingAssembly().Location); childStart.ArgumentList.Add("--child");

@@ -49,11 +49,16 @@ public static class UpdateTrust
         var data = new TrustData { Size = (uint)Marshal.SizeOf<TrustData>(), Ui = 2, Revocation = 1, Choice = 1, File = pointer, StateAction = 1, Flags = 0x80 };
         try
         {
-            if (WinVerifyTrust(new IntPtr(-1), ref action, ref data) != 0) throw new CryptographicException("Assinatura Authenticode do instalador inválida ou não confiável.");
+            int result = WinVerifyTrust(new IntPtr(-1), ref action, ref data);
+            // Certificado próprio (autoassinado): o Windows confere a integridade da assinatura, mas não conhece a raiz
+            // e responde "raiz não confiável". Isso só é aceito para o certificado exato fixado neste build (abaixo).
+            bool untrustedRoot = result is CertUntrustedRoot or CertChaining;
+            if (result != 0 && !untrustedRoot) throw new CryptographicException("Assinatura Authenticode do instalador inválida ou não confiável.");
 #pragma warning disable SYSLIB0057
             using var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(path));
 #pragma warning restore SYSLIB0057
             if (!certificate.GetCertHashString(HashAlgorithmName.SHA256).Equals(pinned, StringComparison.OrdinalIgnoreCase)) throw new CryptographicException("O instalador não pertence ao publicador autorizado.");
+            if (untrustedRoot && !certificate.SubjectName.RawData.AsSpan().SequenceEqual(certificate.IssuerName.RawData)) throw new CryptographicException("Cadeia do certificado do instalador não confiável.");
         }
         finally
         {
@@ -62,6 +67,7 @@ public static class UpdateTrust
             Marshal.DestroyStructure<TrustFile>(pointer); Marshal.FreeHGlobal(pointer);
         }
     }
+    private const int CertUntrustedRoot = unchecked((int)0x800B0109), CertChaining = unchecked((int)0x800B010A);
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct TrustFile { public uint Size; [MarshalAs(UnmanagedType.LPWStr)] public string Path; public IntPtr Handle, Subject; }
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
