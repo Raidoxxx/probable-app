@@ -198,8 +198,10 @@ try
     // Certificado próprio (autoassinado, raiz desconhecida do Windows): só o certificado fixado passa, e só com o arquivo íntegro.
     string signedCopy = Path.Combine(root, "self-signed.dll"); File.Copy(serverDll, signedCopy);
     var signer = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
+    // Chamado de dentro do PowerShell 7 (runner do GitHub), o 5.1 herdaria o PSModulePath do 7 e perderia o drive Cert:.
+    signer.Environment.Remove("PSModulePath");
     foreach (var arg in new[] { "-NoProfile", "-NonInteractive", "-Command",
-        "$ErrorActionPreference='Stop'; $c = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=Ximbuismo Regression' -CertStoreLocation Cert:\\CurrentUser\\My -KeyAlgorithm RSA -KeyLength 2048; " +
+        "$ErrorActionPreference='Stop'; Import-Module Microsoft.PowerShell.Security, PKI; $c =New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=Ximbuismo Regression' -CertStoreLocation Cert:\\CurrentUser\\My -KeyAlgorithm RSA -KeyLength 2048; " +
         $"try {{ $s = Set-AuthenticodeSignature -LiteralPath '{signedCopy}' -Certificate $c -HashAlgorithm SHA256; if (-not $s.SignerCertificate) {{ throw 'nao assinou' }} }} finally {{ Remove-Item ('Cert:\\CurrentUser\\My\\' + $c.Thumbprint) -Force }}" })
         signer.ArgumentList.Add(arg);
     using (var signing = Process.Start(signer)!) { string error = await signing.StandardError.ReadToEndAsync(); await signing.WaitForExitAsync(); Check(signing.ExitCode == 0, "self-signed test binary created " + error.Trim()); }
