@@ -8,7 +8,7 @@ namespace PCBoost.Team;
 public sealed class VoiceCall : IDisposable
 {
     public static readonly WaveFormat Format = new(16000, 16, 1);
-    private readonly Func<byte[], Task> send;
+    private readonly AudioSendQueue sender;
     private readonly WaveInEvent input;
     private readonly WaveOutEvent output;
     private readonly MixingSampleProvider mixer;
@@ -16,7 +16,8 @@ public sealed class VoiceCall : IDisposable
     private readonly Dictionary<long, DateTime> lastHeard = [];
     private readonly object gate = new();
     private int hangFrames;
-    public bool Muted { get; set; }
+    public bool Muted { get => sender.Muted; set => sender.Muted = value; }
+    public event Action<Exception>? Failed;
     public bool Deafened { get; set; }
     public float Gate { get; set; } = 0.012f;
     public double InputLevel { get; private set; }
@@ -26,12 +27,16 @@ public sealed class VoiceCall : IDisposable
 
     public VoiceCall(Func<byte[], Task> send)
     {
-        this.send = send;
         mixer = new MixingSampleProvider(WaveFormat.CreateIeeeFloatWaveFormat(Format.SampleRate, 1)) { ReadFully = true };
         output = new WaveOutEvent { DesiredLatency = 120, NumberOfBuffers = 3 };
-        output.Init(new VolumeGuard(mixer));
         input = new WaveInEvent { WaveFormat = Format, BufferMilliseconds = 40, NumberOfBuffers = 3 };
+        sender = new AudioSendQueue(send);
+        try { output.Init(new VolumeGuard(mixer)); }
+        catch { sender.Dispose(); input.Dispose(); output.Dispose(); throw; }
         input.DataAvailable += Captured;
+        sender.Failed += e => Failed?.Invoke(e);
+        input.RecordingStopped += (_, e) => { if (e.Exception is not null) Failed?.Invoke(e.Exception); };
+        output.PlaybackStopped += (_, e) => { if (e.Exception is not null) Failed?.Invoke(e.Exception); };
     }
     public void Start()
     {
@@ -42,19 +47,19 @@ public sealed class VoiceCall : IDisposable
     private void Captured(object? sender, WaveInEventArgs e)
     {
         double sum = 0; int samples = e.BytesRecorded / 2;
-        for (int i = 0; i < e.BytesRecorded; i += 2) { double s = BitConverter.ToInt16(e.Buffer, i) / 32768d; sum += s * s; }
+        for (int i = 0; i + 1 < e.BytesRecorded; i += 2) { double s = BitConverter.ToInt16(e.Buffer, i) / 32768d; sum += s * s; }
         InputLevel = samples == 0 ? 0 : Math.Sqrt(sum / samples);
         if (Muted) { Speaking = false; return; }
         if (InputLevel >= Gate) hangFrames = 8; else if (hangFrames > 0) hangFrames--;
         Speaking = hangFrames > 0;
         if (!Speaking) return;
         var frame = new byte[e.BytesRecorded]; Buffer.BlockCopy(e.Buffer, 0, frame, 0, e.BytesRecorded);
-        _ = send(frame);
+        this.sender.Enqueue(frame);
     }
 
     public void Receive(long userId, byte[] frame)
     {
-        if (frame.Length % 2 != 0) return;
+        if (frame.Length == 0 || frame.Length > 8192 || frame.Length % 2 != 0) return;
         lock (gate)
         {
             lastHeard[userId] = DateTime.UtcNow;
@@ -82,6 +87,7 @@ public sealed class VoiceCall : IDisposable
 
     public void Dispose()
     {
+        sender.Dispose();
         input.DataAvailable -= Captured;
         try { input.StopRecording(); } catch (Exception) { }
         input.Dispose();

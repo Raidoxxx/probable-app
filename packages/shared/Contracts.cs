@@ -8,7 +8,7 @@ public sealed record ErrorResponse(string Error);
 
 public sealed record UserDto(long Id, string Email, string Name);
 public sealed record GroupDto(long Id, string Name, string Code, long OwnerId, int Members);
-public sealed record MemberDto(long UserId, string Name, string Email, string Role, bool Online);
+public sealed record MemberDto(long UserId, string Name, string Role, bool Online);
 
 public static class ChannelKind
 {

@@ -15,6 +15,7 @@ on:
       - packages/shared/**
       - Directory.Build.props
       - scripts/build-installer.ps1
+      - scripts/build-signed-release.ps1
       - .github/workflows/release.yml
   workflow_dispatch:
 
@@ -36,7 +37,16 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
+
+      - name: Testar regressões de segurança antes da release
+        shell: pwsh
+        run: |
+          dotnet build tests/SecurityRegression/SecurityRegression.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { throw 'Compilação dos testes falhou.' }
+          $dotnet = (Get-Command dotnet).Source
+          & $dotnet tests/SecurityRegression/bin/Release/net10.0-windows/SecurityRegression.dll $dotnet apps/server/bin/Release/net10.0/PCBoost.Server.dll
+          if ($LASTEXITCODE -ne 0) { throw 'Regressões de segurança falharam.' }
 
       - name: Calcular a versão
         id: version
@@ -56,7 +66,11 @@ jobs:
 
       - name: Gerar o instalador
         shell: pwsh
-        run: ./scripts/build-installer.ps1 -ServerUrl $env:SERVER_URL -Version ${{ steps.version.outputs.version }}
+        env:
+          UPDATE_CERTIFICATE_PFX: ${{ secrets.UPDATE_CERTIFICATE_PFX }}
+          UPDATE_CERTIFICATE_PASSWORD: ${{ secrets.UPDATE_CERTIFICATE_PASSWORD }}
+          UPDATE_MANIFEST_PRIVATE_KEY: ${{ secrets.UPDATE_MANIFEST_PRIVATE_KEY }}
+        run: ./scripts/build-signed-release.ps1 -ServerUrl $env:SERVER_URL -Version ${{ steps.version.outputs.version }} -Repository $env:GITHUB_REPOSITORY
 
       - name: Conferir o instalador
         shell: pwsh
@@ -72,6 +86,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = "v${{ steps.version.outputs.version }}"
-          gh release create $tag installer/Ximbuismo-Setup.exe --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA `
+          gh release create $tag installer/Ximbuismo-Setup.exe installer/update-manifest.json installer/update-manifest.sig --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA `
             --title "Ximbuismo ${{ steps.version.outputs.version }}" --generate-notes --latest
           if ($LASTEXITCODE -ne 0) { throw "gh release create falhou." }

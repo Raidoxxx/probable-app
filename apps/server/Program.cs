@@ -3,20 +3,36 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using PCBoost.Server;
 using PCBoost.Shared;
+using Microsoft.AspNetCore.SignalR;
+using System.Net;
+
+if (args is ["--verify-backup", string backup]) { DatabaseBackups.Verify(backup); Console.WriteLine("Backup e restauração verificados."); return; }
 
 // ContentRoot fixo na pasta do executável: o site (wwwroot/) é achado mesmo quando o processo
 // é iniciado de outra pasta (como o start.py da Discloud faz).
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, ContentRootPath = AppContext.BaseDirectory });
+// Serviço de console: logs não dependem de permissão de escrita no Event Log do Windows.
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 // Hospedagem: a maioria dos provedores (Render, Railway, Fly, Azure) informa a porta em PORT e põe HTTPS na frente.
 if (string.IsNullOrEmpty(builder.Configuration["urls"]) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
     builder.WebHost.UseUrls("http://0.0.0.0:" + (Environment.GetEnvironmentVariable("PORT") is { Length: > 0 } port ? port : "5080"));
 builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(o =>
 {
-    o.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
-    o.KnownNetworks.Clear(); o.KnownProxies.Clear(); // o proxy do provedor fica na frente; o limite de tentativas usa o IP real
+    string[] proxies = (builder.Configuration["PCBOOST_KNOWN_PROXIES"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    o.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.None;
+    if (proxies.Length > 0)
+    {
+        o.KnownIPNetworks.Clear(); o.KnownProxies.Clear();
+        foreach (string proxy in proxies) o.KnownProxies.Add(IPAddress.Parse(proxy));
+        o.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    }
 });
 string dataPath = builder.Configuration["data"] ?? Environment.GetEnvironmentVariable("PCBOOST_DATA") ?? Path.Combine(AppContext.BaseDirectory, "data", "pcboost-team.db");
 builder.Services.AddSingleton(new Db(dataPath));
+builder.Services.AddHostedService<SessionExpiry>();
+builder.Services.AddHostedService<DatabaseBackups>();
+builder.Services.AddSingleton<AccountAttempts>();
 // Instalador do app: arquivo local em downloads/ ou, se não houver, um link externo (ex.: GitHub Releases).
 const string SetupName = "Ximbuismo-Setup.exe";
 string downloadsDir = builder.Configuration["downloads"] ?? Environment.GetEnvironmentVariable("PCBOOST_DOWNLOADS") ?? Path.Combine(AppContext.BaseDirectory, "downloads");
@@ -24,7 +40,7 @@ string? downloadUrl = builder.Configuration["downloadUrl"] ?? Environment.GetEnv
 FileInfo? LocalSetup() { var file = new FileInfo(Path.Combine(downloadsDir, SetupName)); return file.Exists ? file : null; }
 string appVersion = typeof(Db).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
 builder.Services.AddSingleton<Presence>();
-builder.Services.AddSignalR(o => { o.MaximumReceiveMessageSize = 64 * 1024; o.EnableDetailedErrors = false; });
+builder.Services.AddSignalR(o => { o.MaximumReceiveMessageSize = 64 * 1024; o.EnableDetailedErrors = false; o.AddFilter<SessionFilter>(); });
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = 429;
@@ -33,6 +49,7 @@ builder.Services.AddRateLimiter(o =>
 });
 
 var app = builder.Build();
+app.Services.GetRequiredService<Db>().SessionRevoked += app.Services.GetRequiredService<Presence>().Revoke;
 app.UseForwardedHeaders();
 app.UseWebSockets();
 app.UseRateLimiter();
@@ -58,6 +75,7 @@ app.Use(async (http, next) =>
         var user = string.IsNullOrEmpty(token) ? null : http.RequestServices.GetRequiredService<Db>().UserByToken(token);
         if (user is null) { http.Response.StatusCode = 401; return; }
         http.Items[TeamHub.UserKey] = user;
+        http.Items[SessionFilter.SessionKey] = Db.SessionHash(token!);
     }
     await next();
 });
@@ -84,9 +102,10 @@ app.MapMethods("/download", new[] { "GET", "HEAD" }, () =>
     if (!string.IsNullOrEmpty(downloadUrl)) return Results.Redirect(downloadUrl);
     return Results.Text("O instalador ainda não foi publicado. Tente de novo mais tarde.", "text/plain; charset=utf-8", statusCode: 404);
 });
-app.MapPost("/api/register", (AuthRequest r, Db db) =>
+app.MapPost("/api/register", (AuthRequest r, Db db, AccountAttempts attempts) =>
 {
     if (Problem(r, true) is string error) return Results.BadRequest(new ErrorResponse(error));
+    if (!attempts.Allow(r.Email)) return Results.StatusCode(429);
     try
     {
         var user = db.Register(r.Email.Trim(), r.Name!.Trim(), r.Password);
@@ -94,9 +113,10 @@ app.MapPost("/api/register", (AuthRequest r, Db db) =>
     }
     catch (AppError e) { return Results.Conflict(new ErrorResponse(e.Message)); }
 }).RequireRateLimiting("auth");
-app.MapPost("/api/login", (AuthRequest r, Db db) =>
+app.MapPost("/api/login", (AuthRequest r, Db db, AccountAttempts attempts) =>
 {
     if (Problem(r, false) is string error) return Results.BadRequest(new ErrorResponse(error));
+    if (!attempts.Allow(r.Email)) return Results.StatusCode(429);
     var user = db.Verify(r.Email.Trim(), r.Password);
     return user is null ? Results.Json(new ErrorResponse("E-mail ou senha incorretos."), statusCode: 401) : Results.Ok(new AuthResponse(db.IssueToken(user.Id), user));
 }).RequireRateLimiting("auth");
@@ -105,7 +125,12 @@ app.MapGet("/api/me", (HttpRequest req, Db db) =>
     string token = req.Headers.Authorization.ToString().Replace("Bearer ", "");
     return db.UserByToken(token) is UserDto user ? Results.Ok(user) : Results.Unauthorized();
 });
-app.MapPost("/api/logout", (HttpRequest req, Db db) => { db.RevokeToken(req.Headers.Authorization.ToString().Replace("Bearer ", "")); return Results.Ok(); });
+app.MapPost("/api/logout", async (HttpRequest req, Db db, Presence presence) =>
+{
+    await presence.Gate.WaitAsync();
+    try { db.RevokeToken(req.Headers.Authorization.ToString().Replace("Bearer ", "")); return Results.Ok(); }
+    finally { presence.Gate.Release(); }
+});
 app.MapHub<TeamHub>("/hub");
 
 app.Logger.LogInformation("PCBoost.Server · dados em {Path}", dataPath);

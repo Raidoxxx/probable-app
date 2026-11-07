@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -30,7 +30,7 @@ public partial class MainWindow
     private VoiceCall? voice;
     private ChannelDto? callChannel;
     private GroupDto? callGroup;
-    private bool micMuted, deafened, chatHasMore, registerMode, addServer, membersVisible = true;
+    private bool micMuted, deafened, chatHasMore, registerMode, addServer;
     private string? creatingKind;
     private IdeaDto? editingIdea;
     private string? newIdeaStatus;
@@ -42,7 +42,7 @@ public partial class MainWindow
     private readonly System.Diagnostics.Stopwatch loginClock = new();
 
     // Referências do conteúdo (recriadas a cada navegação).
-    private StackPanel? chatPanel, membersPanel;
+    private StackPanel? chatPanel;
     private ScrollViewer? chatScroll;
     private Grid? boardHost, voiceHost;
     private TextBox? chatInput;
@@ -62,12 +62,18 @@ public partial class MainWindow
         team.Presence += (g, u, on) => Ui(() =>
         {
             if (current?.Id != g) return;
-            members = members.Select(x => x.UserId == u ? x with { Online = on } : x).ToList(); RenderMembers();
+            members = members.Select(x => x.UserId == u ? x with { Online = on } : x).ToList(); RenderPeople();
         });
         team.MembersChanged += g => Ui(async () =>
         {
             groups = await team.Groups(); RenderRail();
-            if (current?.Id == g) { members = await team.Members(g); RenderMembers(); }
+            if (current?.Id == g) { members = await team.Members(g); RenderPeople(); }
+        });
+        team.GroupLeft += g => Ui(async () =>
+        {
+            if (callGroup?.Id == g) await LeaveCall();
+            if (current?.Id == g) current = null;
+            await LoadGroups(current?.Id);
         });
         team.ChannelsChanged += g => Ui(async () =>
         {
@@ -104,8 +110,13 @@ public partial class MainWindow
         {
             bool reconnected = state == "CONECTADO" && connectionLabel == "RECONECTANDO";
             connectionLabel = state; UpdateAccount();
+            if (state == "DESCONECTADO") { await LeaveCall(); return; }
             if (!reconnected) return;
-            if (callChannel is not null) { try { voiceStates[callChannel.Id] = await team.JoinCall(callChannel.Id, micMuted || deafened); } catch (Exception) { } }
+            if (callChannel is not null)
+            {
+                try { voiceStates[callChannel.Id] = await team.JoinCall(callChannel.Id, micMuted || deafened); }
+                catch (Exception ex) { await LeaveCall(); Status("Não foi possível retomar a chamada: " + ex.Message); }
+            }
             await LoadGroups(current?.Id);
         });
     }
@@ -129,7 +140,7 @@ public partial class MainWindow
         LoginOverlay.Visibility = Visibility.Visible; RenderLoginArt();
         Dispatcher.BeginInvoke(() => (EmailBox.Text.Length == 0 ? (Control)EmailBox : PasswordBox).Focus(), DispatcherPriority.Input);
     }
-    private void HideLogin() { LoginOverlay.Visibility = Visibility.Collapsed; PasswordBox.Clear(); loginArtTimer?.Stop(); }
+    private void HideLogin() { LoginOverlay.Visibility = Visibility.Collapsed; PasswordBox.Clear(); loginArtTimer?.Stop(); RevealDrawers(); }
     private void SwitchMode(bool register)
     {
         registerMode = register; NameRow.Visibility = register ? Visibility.Visible : Visibility.Collapsed;
@@ -246,13 +257,14 @@ public partial class MainWindow
     }
     private static string Glyph(string kind) => kind switch { ChannelKind.Voice => "🔊", ChannelKind.Board => "▦", _ => "#" };
 
-    // ===================== Trilho de servidores =====================
+    // ===================== Dock de servidores (embaixo) =====================
     private void RenderRail()
     {
         Rail.Children.Clear();
+        UpdateNotifyBadge();
         bool home = page != PageGroups;
         Rail.Children.Add(RailIcon(LogoMark(), "Ximbuismo · Boost", home, false, () => Navigate(PageOverview)));
-        Rail.Children.Add(new Border { Height = 2, Width = 32, Background = Brush("#262626"), Margin = new Thickness(0, 4, 0, 8), HorizontalAlignment = HorizontalAlignment.Center });
+        Rail.Children.Add(new Border { Width = 2, Height = 28, Background = Brush("#262626"), Margin = new Thickness(4, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
         foreach (var g in groups)
         {
             bool selected = !home && !addServer && current?.Id == g.Id;
@@ -270,20 +282,20 @@ public partial class MainWindow
     }
     private static UIElement LogoMark()
     {
-        return new Image { Source = (ImageSource)Application.Current.FindResource("BrandLogo"), Width = 34, Height = 34 };
+        return new Image { Source = (ImageSource)Application.Current.FindResource("BrandLogo"), Width = 30, Height = 30 };
     }
-    // Ícone circular que vira quadrado arredondado no hover/seleção, com a "pílula" branca à esquerda (Discord).
+    // Ícone redondo que vira quadrado arredondado no hover/seleção, com a "pílula" branca embaixo (dock horizontal).
     private UIElement RailIcon(UIElement content, string tip, bool selected, bool unreadDot, Action click, bool accent = false)
     {
-        var pill = new Border { Width = 4, Height = selected ? 40 : unreadDot ? 8 : 0, Background = Brushes.White, CornerRadius = new CornerRadius(0, 4, 4, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
-        var icon = new Border { Width = 48, Height = 48, CornerRadius = new CornerRadius(selected ? 14 : 24), Background = selected ? Brush(content is Image ? "#222222" : "#EDEDED") : Brush("#161616"),
-            BorderBrush = Brush(accent ? "#2E2E2E" : "#222222"), BorderThickness = new Thickness(1), Child = content, HorizontalAlignment = HorizontalAlignment.Center, Cursor = Cursors.Hand, ToolTip = tip };
+        var pill = new Border { Height = 3, Width = selected ? 22 : unreadDot ? 6 : 0, Background = Brushes.White, CornerRadius = new CornerRadius(2), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 1) };
+        var icon = new Border { Width = 42, Height = 42, CornerRadius = new CornerRadius(selected ? 12 : 21), Background = selected ? Brush(content is Image ? "#222222" : "#EDEDED") : Brush("#161616"),
+            BorderBrush = Brush(accent ? "#2E2E2E" : "#222222"), BorderThickness = new Thickness(1), Child = content, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Cursor = Cursors.Hand, ToolTip = tip };
         System.Windows.Documents.TextElement.SetForeground(icon, selected ? Brushes.Black : accent ? (Brush)FindResource("Accent") : Brush("#EDEDED"));
         if (selected && content is Grid g) foreach (var shape in g.Children.OfType<Shape>()) shape.Stroke = Brushes.Black;
-        var host = new Grid { Height = 56, Background = Brushes.Transparent };
+        var host = new Grid { Width = 52, Height = 54, Background = Brushes.Transparent };
         host.Children.Add(pill); host.Children.Add(icon);
-        host.MouseEnter += (_, _) => { if (!selected) { icon.CornerRadius = new CornerRadius(14); icon.Background = Brush("#222222"); pill.Height = Math.Max(pill.Height, 20); } };
-        host.MouseLeave += (_, _) => { if (!selected) { icon.CornerRadius = new CornerRadius(24); icon.Background = Brush("#161616"); pill.Height = unreadDot ? 8 : 0; } };
+        host.MouseEnter += (_, _) => { if (!selected) { icon.CornerRadius = new CornerRadius(12); icon.Background = Brush("#222222"); pill.Width = Math.Max(pill.Width, 12); } };
+        host.MouseLeave += (_, _) => { if (!selected) { icon.CornerRadius = new CornerRadius(21); icon.Background = Brush("#161616"); pill.Width = unreadDot ? 6 : 0; } };
         host.MouseLeftButtonUp += (_, _) => click();
         return host;
     }
@@ -293,14 +305,16 @@ public partial class MainWindow
     {
         if (SidebarHost is null) return;
         SidebarHost.Children.Clear(); ServerMenu.IsOpen = false;
-        foreach (var list in talkRings.Values) list.RemoveAll(r => IsInSidebar(r));
-        bool server = page == PageGroups && current is not null && !addServer && team.User is not null;
+        foreach (var list in talkRings.Values) list.RemoveAll(r => IsInside(r, SidebarHost));
+        bool server = InServer;
         SidebarChevron.Visibility = server ? Visibility.Visible : Visibility.Collapsed;
         SidebarHeader.Cursor = server ? Cursors.Hand : null;
-        if (!server) { RenderHomeSidebar(); return; }
+        if (!server) { RenderHomeSidebar(); RenderPeople(); return; }
         SidebarTitle.Text = current!.Name;
         bool owner = current.OwnerId == team.User?.Id;
-        foreach (var (kind, title) in new[] { (ChannelKind.Text, "CANAIS DE TEXTO"), (ChannelKind.Board, "QUADROS"), (ChannelKind.Voice, "CANAIS DE VOZ") })
+        SidebarHost.Children.Add(HomeRow("◆", "Início", false, () => Navigate(PageOverview)));
+        // Voz fica no painel da direita, junto dos membros.
+        foreach (var (kind, title) in new[] { (ChannelKind.Text, "CANAIS"), (ChannelKind.Board, "QUADROS") })
         {
             var head = new DockPanel { Margin = new Thickness(8, 14, 6, 4) };
             if (owner)
@@ -314,10 +328,12 @@ public partial class MainWindow
             foreach (var c in channels.Where(c => c.Kind == kind)) SidebarHost.Children.Add(ChannelRow(c, owner));
             if (creatingKind == kind) SidebarHost.Children.Add(NewChannelBox(kind));
         }
+        RenderPeople();
     }
-    private bool IsInSidebar(DependencyObject element)
+    private bool InServer => page == PageGroups && current is not null && !addServer && team.User is not null;
+    private static bool IsInside(DependencyObject element, DependencyObject host)
     {
-        for (var node = element; node is not null; node = VisualTreeHelper.GetParent(node) ?? LogicalTreeHelper.GetParent(node)) if (ReferenceEquals(node, SidebarHost)) return true;
+        for (var node = element; node is not null; node = (node is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(node) : null) ?? LogicalTreeHelper.GetParent(node)) if (ReferenceEquals(node, host)) return true;
         return false;
     }
     private UIElement ChannelRow(ChannelDto c, bool owner)
@@ -418,7 +434,7 @@ public partial class MainWindow
         {
             ServerMenuHost.Children.Add(Item("Criar canal de texto", "#EDEDED", () => { creatingKind = ChannelKind.Text; RenderSidebar(); }));
             ServerMenuHost.Children.Add(Item("Criar quadro de ideias", "#EDEDED", () => { creatingKind = ChannelKind.Board; RenderSidebar(); }));
-            ServerMenuHost.Children.Add(Item("Criar canal de voz", "#EDEDED", () => { creatingKind = ChannelKind.Voice; RenderSidebar(); }));
+            ServerMenuHost.Children.Add(Item("Criar canal de voz", "#EDEDED", () => { creatingKind = ChannelKind.Voice; RenderSidebar(); ShowDrawer(Edge.Right, 2); }));
         }
         ServerMenuHost.Children.Add(new Border { Height = 1, Background = Brush("#262626"), Margin = new Thickness(6, 4, 6, 4) });
         bool armed = false; Button? leave = null;
@@ -464,7 +480,7 @@ public partial class MainWindow
     // ===================== Conteúdo =====================
     private void ClearTeamView()
     {
-        chatPanel = membersPanel = null; chatScroll = null; boardHost = voiceHost = null; chatInput = null;
+        chatPanel = null; chatScroll = null; boardHost = voiceHost = null; chatInput = null;
         talkRings.Clear(); FullHost.Children.Clear();
     }
     private void GroupsPage()
@@ -484,23 +500,15 @@ public partial class MainWindow
         var invite = new Button { Content = Mono("CONVIDAR · " + current.Code, 10, "#9AB8FF"), Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(0, 0, 8, 0), ToolTip = "Copiar código de convite" };
         string code = current.Code; invite.Click += (_, _) => { try { Clipboard.SetText(code); Status($"Código {code} copiado."); } catch (Exception ex) { Status(ex.Message); } };
         HeaderActions.Children.Add(invite);
-        var people = new Button { Content = new TextBlock { Text = "👥", FontFamily = new FontFamily("Segoe UI Emoji"), FontSize = 14, Foreground = Brush(membersVisible ? "#FFFFFF" : "#6A6A6A") }, Style = (Style)FindResource("GhostButton"), Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(0), ToolTip = "Mostrar ou esconder membros" };
-        people.Click += (_, _) => { membersVisible = !membersVisible; Navigate(PageGroups); };
-        HeaderActions.Children.Add(people);
 
-        var grid = new Grid(); grid.ColumnDefinitions.Add(new()); grid.ColumnDefinitions.Add(new() { Width = membersVisible ? new GridLength(240) : new GridLength(0) });
-        var content = new Grid(); grid.Children.Add(content);
-        membersPanel = new StackPanel { Margin = new Thickness(12, 16, 12, 16) };
-        var right = new Border { Background = Brush("#0E0E0E"), BorderBrush = Brush("#262626"), BorderThickness = new Thickness(1, 0, 0, 0), Child = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = membersPanel } };
-        Grid.SetColumn(right, 1); grid.Children.Add(right);
-        FullHost.Children.Add(grid);
+        // Membros ficam no painel flutuante da direita; o conteúdo ocupa a área principal inteira.
+        var content = new Grid(); FullHost.Children.Add(content);
         switch (channel.Kind)
         {
             case ChannelKind.Voice: voiceHost = content; RenderVoice(); break;
             case ChannelKind.Board: boardHost = new Grid { Margin = new Thickness(16) }; content.Children.Add(boardHost); RenderBoard(keepEditor: false); break;
             default: BuildChat(content); break;
         }
-        RenderMembers();
     }
     private UIElement Centered(params UIElement[] items)
     {
@@ -635,7 +643,7 @@ public partial class MainWindow
     private void RenderVoice()
     {
         if (voiceHost is null || channel is null || current is null) return;
-        foreach (var list in talkRings.Values) list.RemoveAll(r => !IsInSidebar(r));
+        foreach (var list in talkRings.Values) list.RemoveAll(r => !IsInside(r, SidebarHost) && !IsInside(r, PeopleHost));
         voiceHost.Children.Clear(); voiceHost.RowDefinitions.Clear();
         voiceHost.RowDefinitions.Add(new()); voiceHost.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var people = voiceStates.GetValueOrDefault(channel.Id) ?? [];
@@ -678,6 +686,7 @@ public partial class MainWindow
         if (voice is null)
         {
             var created = new VoiceCall(team.SendAudio) { Muted = micMuted || deafened, Deafened = deafened };
+            created.Failed += ex => Ui(async () => { if (voice != created) return; await LeaveCall(); Status("Chamada encerrada: " + ex.Message); });
             try { created.Start(); } catch (Exception ex) { created.Dispose(); throw new InvalidOperationException("Não foi possível abrir o áudio: " + ex.Message); }
             voice = created;
         }
@@ -708,29 +717,20 @@ public partial class MainWindow
     }
 
     // ---------- Membros ----------
-    private void RenderMembers()
+    private UIElement MemberRow(MemberDto m)
     {
-        if (membersPanel is null || current is null) return; membersPanel.Children.Clear();
-        foreach (var (title, list) in new[] { ("ONLINE", members.Where(m => m.Online).ToList()), ("OFFLINE", members.Where(m => !m.Online).ToList()) })
-        {
-            if (list.Count == 0) continue;
-            membersPanel.Children.Add(Spaced(Mono($"{title} — {list.Count}", 10, "#6A6A6A"), 8, membersPanel.Children.Count == 0 ? 0 : 18, 0, 8));
-            foreach (var m in list.OrderBy(m => m.Name))
-            {
-                var row = new DockPanel { Margin = new Thickness(0, 0, 0, 2) };
-                var avatar = Avatar(m.Name, m.UserId, 32, m.Online); avatar.Margin = new Thickness(0, 0, 10, 0); row.Children.Add(avatar);
-                var name = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                var line = new StackPanel { Orientation = Orientation.Horizontal };
-                line.Children.Add(new TextBlock { Text = m.Name, FontSize = 13.5, Foreground = Brush(m.Online ? "#EDEDED" : "#6A6A6A"), TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 140 });
-                if (m.Role == "dono") line.Children.Add(Spaced(new TextBlock { Text = "♛", Foreground = (Brush)FindResource("Warn"), FontSize = 12, ToolTip = "Dono do servidor" }, 6, 0, 0, 0));
-                name.Children.Add(line);
-                if (m.UserId == team.User?.Id) name.Children.Add(Mono("VOCÊ", 9, "#4A4A4A"));
-                row.Children.Add(name);
-                var item = new Border { Child = row, Padding = new Thickness(8, 5, 8, 5), CornerRadius = new CornerRadius(4), Background = Brushes.Transparent, Opacity = m.Online ? 1 : 0.6, ToolTip = m.Email };
-                item.MouseEnter += (_, _) => item.Background = Brush("#171717"); item.MouseLeave += (_, _) => item.Background = Brushes.Transparent;
-                membersPanel.Children.Add(item);
-            }
-        }
+        var row = new DockPanel();
+        var avatar = Avatar(m.Name, m.UserId, 28, m.Online); avatar.Margin = new Thickness(0, 0, 10, 0); row.Children.Add(avatar);
+        var name = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        var line = new StackPanel { Orientation = Orientation.Horizontal };
+        line.Children.Add(new TextBlock { Text = m.Name, FontSize = 13, Foreground = Brush(m.Online ? "#EDEDED" : "#6A6A6A"), TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 130 });
+        if (m.Role == "dono") line.Children.Add(Spaced(new TextBlock { Text = "♛", Foreground = (Brush)FindResource("Warn"), FontSize = 12, ToolTip = "Dono do servidor" }, 6, 0, 0, 0));
+        name.Children.Add(line);
+        if (m.UserId == team.User?.Id) name.Children.Add(Mono("VOCÊ", 9, "#4A4A4A"));
+        row.Children.Add(name);
+        var item = new Border { Child = row, Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(0, 0, 0, 1), CornerRadius = new CornerRadius(4), Background = Brushes.Transparent, Opacity = m.Online ? 1 : 0.6, ToolTip = m.Role };
+        item.MouseEnter += (_, _) => item.Background = Brush("#171717"); item.MouseLeave += (_, _) => item.Background = Brushes.Transparent;
+        return item;
     }
 
     // ---------- Quadro de ideias e tarefas ----------

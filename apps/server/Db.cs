@@ -9,6 +9,9 @@ namespace PCBoost.Server;
 public sealed class Db
 {
     private readonly string connection;
+    public string PathOnDisk => new SqliteConnectionStringBuilder(connection).DataSource;
+    public event Action<string>? SessionRevoked;
+    public static string SessionHash(string token) => "sha256:" + Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token)));
     public Db(string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
@@ -27,6 +30,11 @@ public sealed class Db
             CREATE TABLE IF NOT EXISTS votes(idea_id INTEGER NOT NULL, user_id INTEGER NOT NULL, PRIMARY KEY(idea_id, user_id));
             """);
         Migrate(db);
+        // Migração atômica dos tokens antigos sem encerrar as sessões existentes.
+        using var tx = db.BeginTransaction();
+        foreach (string token in Query(db, r => r.GetString(0), "SELECT token FROM tokens WHERE token NOT LIKE 'sha256:%'"))
+            Exec(db, "UPDATE tokens SET token=$h WHERE token=$t", ("$h", SessionHash(token)), ("$t", token));
+        tx.Commit();
     }
     // Bancos da versão anterior (um chat e um quadro por servidor) ganham canais padrão; o conteúdo antigo vai para #geral e #ideias.
     private static void Migrate(SqliteConnection db)
@@ -86,11 +94,17 @@ public sealed class Db
     public string IssueToken(long userId)
     {
         string token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).Replace('+', '-').Replace('/', '_').TrimEnd('=');
-        using var db = Open(); Exec(db, "INSERT INTO tokens(token,user_id,created) VALUES($t,$u,$c)", ("$t", token), ("$u", userId), ("$c", Now()));
+        using var db = Open(); Exec(db, "INSERT INTO tokens(token,user_id,created) VALUES($t,$u,$c)", ("$t", SessionHash(token)), ("$u", userId), ("$c", Now()));
         return token;
     }
-    public void RevokeToken(string token) { using var db = Open(); Exec(db, "DELETE FROM tokens WHERE token=$t", ("$t", token)); }
-    public UserDto? UserByToken(string token)
+    public void RevokeToken(string token)
+    {
+        string session = SessionHash(token);
+        using var db = Open(); Exec(db, "DELETE FROM tokens WHERE token=$t", ("$t", session));
+        SessionRevoked?.Invoke(session);
+    }
+    public UserDto? UserByToken(string token) => UserBySession(SessionHash(token));
+    public UserDto? UserBySession(string token)
     {
         using var db = Open();
         return Query(db, r => new UserDto(r.GetInt64(0), r.GetString(1), r.GetString(2)),
@@ -157,8 +171,8 @@ public sealed class Db
     public List<MemberDto> Members(long groupId, Func<long, bool> online)
     {
         using var db = Open();
-        return Query(db, r => new MemberDto(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3), online(r.GetInt64(0))),
-            "SELECT u.id,u.name,u.email,m.role FROM members m JOIN users u ON u.id=m.user_id WHERE m.group_id=$g ORDER BY m.role='dono' DESC, u.name COLLATE NOCASE", ("$g", groupId));
+        return Query(db, r => new MemberDto(r.GetInt64(0), r.GetString(1), r.GetString(2), online(r.GetInt64(0))),
+            "SELECT u.id,u.name,m.role FROM members m JOIN users u ON u.id=m.user_id WHERE m.group_id=$g ORDER BY m.role='dono' DESC, u.name COLLATE NOCASE", ("$g", groupId));
     }
 
     // ---------- Canais ----------

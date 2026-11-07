@@ -1,4 +1,5 @@
-# Gera o instalador e publica como release no GitHub; o botão "Baixar" do site aponta para
+#Requires -Version 7.4
+# Gera o instalador assinado e publica como release no GitHub; o botão "Baixar" do site aponta para
 #   https://github.com/Raidoxxx/probable-app/releases/latest/download/Ximbuismo-Setup.exe
 # Requer o GitHub CLI autenticado (gh auth login). O repositório precisa ser público para
 # que qualquer pessoa consiga baixar o anexo.
@@ -14,15 +15,17 @@ $version = ($props.Project.PropertyGroup | Where-Object { $_.Version } | Select-
 if (-not $version) { throw "Version não encontrada em Directory.Build.props." }
 $tag = "v$version"
 
-& (Join-Path $PSScriptRoot "build-installer.ps1") -ServerUrl $ServerUrl
+& (Join-Path $PSScriptRoot "build-signed-release.ps1") -Version $version -ServerUrl $ServerUrl -Repository $Repo
 $exe = Join-Path $root "installer\Ximbuismo-Setup.exe"
+$manifest = Join-Path $root "installer\update-manifest.json"
+$signature = Join-Path $root "installer\update-manifest.sig"
 
 gh release view $tag --repo $Repo *> $null
 if ($LASTEXITCODE -eq 0) {
     # Mesma versão: troca o anexo. Para uma versão nova, aumente <Version> no Directory.Build.props.
-    gh release upload $tag $exe --repo $Repo --clobber
+    gh release upload $tag $exe $manifest $signature --repo $Repo --clobber
 } else {
-    gh release create $tag $exe --repo $Repo --title "Ximbuismo $version" --notes "Instalador do Ximbuismo para Windows 10/11 (64 bits). Servidor: $ServerUrl"
+    gh release create $tag $exe $manifest $signature --repo $Repo --title "Ximbuismo $version" --notes "Instalador do Ximbuismo para Windows 10/11 (64 bits). Servidor: $ServerUrl"
 }
 if ($LASTEXITCODE -ne 0) { throw "gh release falhou." }
 "Release $tag publicada em $Repo."

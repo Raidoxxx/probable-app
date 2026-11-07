@@ -37,6 +37,7 @@ public sealed class TeamClient : IAsyncDisposable
     public event Action<MessageDto>? Message;
     public event Action<long, long, bool>? Presence;
     public event Action<long>? MembersChanged;
+    public event Action<long>? GroupLeft;
     public event Action<long>? ChannelsChanged;
     public event Action<long, long, long>? IdeaChanged;   // servidor, canal, item
     public event Action<long, long, long>? IdeaDeleted;
@@ -68,11 +69,15 @@ public sealed class TeamClient : IAsyncDisposable
     {
         server = server.Trim().TrimEnd('/');
         if (server.Length == 0) server = DefaultServer;
-        if (!server.Contains("://")) server = "http://" + server;
+        if (!server.Contains("://")) server = "https://" + server;
         if (!Uri.TryCreate(server, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) throw new InvalidDataException("Endereço do servidor inválido.");
+        bool local = uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || System.Net.IPAddress.TryParse(uri.Host.Trim('[', ']'), out var ip) && System.Net.IPAddress.IsLoopback(ip);
+        if (uri.Scheme == "http" && !local) throw new InvalidDataException("Servidores remotos precisam usar HTTPS.");
+        if (uri.UserInfo.Length > 0) throw new InvalidDataException("Não inclua credenciais no endereço do servidor.");
         return uri.GetLeftPart(UriPartial.Authority);
     }
-    private static HttpClient Http(string server) => new() { BaseAddress = new Uri(server), Timeout = TimeSpan.FromSeconds(10) };
+    private static HttpClient Http(string server) => new(new HttpClientHandler { AllowAutoRedirect = false }) { BaseAddress = new Uri(server), Timeout = TimeSpan.FromSeconds(10) };
 
     public async Task SignIn(string server, string email, string password, string? name, bool register, bool remember)
     {
@@ -121,12 +126,17 @@ public sealed class TeamClient : IAsyncDisposable
     {
         if (hub is not null) await hub.DisposeAsync();
         hub = new HubConnectionBuilder()
-            .WithUrl(Server + "/hub", o => o.AccessTokenProvider = () => Task.FromResult<string?>(token))
+            .WithUrl(Server + "/hub", o =>
+            {
+                o.AccessTokenProvider = () => Task.FromResult<string?>(token);
+                o.HttpMessageHandlerFactory = handler => { if (handler is HttpClientHandler h) h.AllowAutoRedirect = false; return handler; };
+            })
             .WithAutomaticReconnect([TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30)])
             .Build();
         hub.On<MessageDto>("Message", m => Message?.Invoke(m));
         hub.On<long, long, bool>("Presence", (g, u, on) => Presence?.Invoke(g, u, on));
         hub.On<long>("MembersChanged", g => MembersChanged?.Invoke(g));
+        hub.On<long>("GroupLeft", g => GroupLeft?.Invoke(g));
         hub.On<long>("ChannelsChanged", g => ChannelsChanged?.Invoke(g));
         hub.On<long, long, long>("IdeaChanged", (g, c, i) => IdeaChanged?.Invoke(g, c, i));
         hub.On<long, long, long>("IdeaDeleted", (g, c, i) => IdeaDeleted?.Invoke(g, c, i));

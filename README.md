@@ -4,7 +4,7 @@ Aplicativo Windows em português do Brasil que funciona como o Discord, com dois
 
 - **Trilho à esquerda:** o ícone do Boost no topo, os seus servidores e o **+** (criar ou entrar com código de convite).
 - **Servidores:** canais de texto `#`, **quadros** de ideias/tarefas e canais de **voz** 🔊 (quem está na voz aparece embaixo do canal). Membros online/offline à direita. Painel do usuário embaixo, com microfone, fone e ⚙ configurações.
-- **Boost:** um botão **BOOST** e a grade dos jogos instalados (Steam, Epic, GOG, Ubisoft, Riot e os que você adicionar). Clicar num jogo dá boost e abre o jogo. O boost é automático e reversível: modo de energia de desempenho (só quando o plano atual não é de desempenho, e só anunciado depois de confirmado), apps em segundo plano com prioridade "abaixo do normal" e memória ociosa devolvida ao Windows, e o jogo com prioridade alta. Nenhum app é fechado. Chat de voz, OBS, drivers, launchers e anti-cheat ficam de fora. Quando o jogo fecha, tudo volta ao normal sozinho. As telas detalhadas ficam em **⚙ → Avançado**.
+- **Boost:** um botão **BOOST** e a grade dos jogos instalados (Steam, Epic, GOG, Ubisoft, Riot e os que você adicionar). Clicar num jogo dá boost e abre o jogo. O boost é automático e reversível: modo de energia de desempenho (só quando o plano atual não é de desempenho, e só anunciado depois de confirmado), apps em segundo plano com prioridade "abaixo do normal" e o executável principal do jogo com prioridade alta. Nenhum app é fechado. Chat de voz, OBS, drivers, launchers e anti-cheat ficam de fora. Quando o jogo fecha, tudo volta ao normal sozinho. As telas detalhadas ficam em **⚙ → Avançado**.
 
 O Boost funciona sem conta. Servidores, chat, voz e quadros usam o servidor online.
 
@@ -17,8 +17,8 @@ O Boost funciona sem conta. Servidores, chat, voz e quadros usam o servidor onli
 ## Monorepo
 
 ```
-apps/desktop      App Windows (WPF, .NET 8): Boost + cliente estilo Discord
-apps/server       Servidor (ASP.NET Core 8 + SignalR + SQLite): contas, servidores, canais, chat, voz e quadros
+apps/desktop      App Windows (WPF, .NET 10): Boost + cliente estilo Discord
+apps/server       Servidor (ASP.NET Core 10 + SignalR + SQLite): contas, servidores, canais, chat, voz e quadros
 apps/web          Site de download (HTML/CSS/JS estático), servido pelo próprio servidor em /
 packages/shared   Contratos (DTOs) usados pelo app e pelo servidor
 discloud.config  Configuração da Discloud na raiz (MAIN=start.py)
@@ -63,17 +63,17 @@ O servidor também serve o site em `/` (código em [apps/web](apps/web)). O bot�
 
 Na Discloud o .exe (~70 MB) não cabe junto com o servidor no limite de 100 MB do .zip. Por isso o `start.py` aponta `PCBOOST_DOWNLOAD_URL` para o anexo da última release do GitHub, e o instalador é publicado com:
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/publish-release.ps1
+pwsh -File scripts/publish-release.ps1
 ```
 O script gera o instalador e cria (ou atualiza) a release `v<Version>` com o `Ximbuismo-Setup.exe`. O repositório precisa ser **público** para qualquer pessoa baixar o anexo. Para manter o código privado, crie um repositório público só para releases, passe `-Repo dono/repo` ao script e troque o endereço em `PCBOOST_DOWNLOAD_URL` no `start.py`.
 
 O banco SQLite fica em `data/pcboost-team.db` dentro da aplicação na Discloud. Faça backup antes de apagar ou recriar a aplicação. Bancos da versão anterior são migrados sozinhos: cada servidor ganha `#geral`, `#ideias` e o canal de voz `Geral`, com as mensagens e ideias antigas.
 
-Fora da Discloud, o servidor também roda em Docker (`docker build -f apps/server/Dockerfile -t pcboost-server .`) ou em qualquer host .NET 8. Ele usa a porta da variável `PORT`, o banco em `PCBOOST_DATA`, o instalador em `PCBOOST_DOWNLOADS` ou `PCBOOST_DOWNLOAD_URL`, e entende HTTPS atrás de proxy.
+Fora da Discloud, o servidor também roda em Docker (`docker build -f apps/server/Dockerfile -t pcboost-server .`) ou em qualquer host .NET 10. Ele usa a porta da variável `PORT`, o banco em `PCBOOST_DATA`, o instalador em `PCBOOST_DOWNLOADS` ou `PCBOOST_DOWNLOAD_URL`, e entende HTTPS atrás de proxy.
 
 ## Servidores: como funciona
 
-- **Contas:** e-mail + senha (mínimo 8 caracteres). Senhas com PBKDF2-SHA512 e sal; tokens aleatórios de 30 dias, revogados ao sair. "Manter conectado" guarda o token protegido por DPAPI (só seu usuário do Windows o lê). Login e cadastro limitados a 10 tentativas por minuto por IP.
+- **Contas:** e-mail + senha (mínimo 8 caracteres). Senhas com PBKDF2-SHA512 e sal; tokens aleatórios de 30 dias, revogados ao sair. "Manter conectado" guarda o token protegido por DPAPI (só seu usuário do Windows o lê). Login e cadastro limitados a 10 tentativas por minuto por IP e por conta.
 - **Servidores e canais:** quem cria é o dono e o único que cria ou apaga canais (o último canal de texto não pode ser apagado). Convite por código de 6 caracteres. Se o dono sair, o membro mais antigo assume; quando o último membro sai, o servidor é apagado.
 - **Chat:** em tempo real via SignalR, por canal, histórico paginado (80 por vez), mensagens agrupadas por autor, presença online/offline, contador de não lidas por canal.
 - **Voz:** por canal de voz, como no Discord: clique no canal para entrar. Áudio PCM 16 kHz mono (NAudio); silêncio não é enviado; o servidor só repassa o áudio, sem gravar. Mudo, ensurdecer, anel verde em quem está falando. A voz continua enquanto você navega. Feita para grupos pequenos (~32 KB/s por pessoa falando, sem criptografia ponta a ponta).
@@ -136,3 +136,5 @@ Confira os arquivos `*-test-result.txt` na pasta de trabalho. A integração req
 Consulte [docs/VALIDATION.md](docs/VALIDATION.md) para resultados, escopo e passos de validação em servidor real.
 
 Referências das fontes: [GlobalMemoryStatusEx](https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-globalmemorystatusex), [GetPerformanceInfo](https://learn.microsoft.com/en-us/windows/win32/api/psapi/nf-psapi-getperformanceinfo), [PROCESS_MEMORY_COUNTERS_EX2](https://learn.microsoft.com/en-us/windows/win32/api/psapi/ns-psapi-process_memory_counters_ex2), [RAMMap](https://learn.microsoft.com/en-us/sysinternals/downloads/rammap).
+
+Operação segura, configuração de proxies, assinatura de releases, backups e resultados da auditoria: [docs/SECURITY-REMEDIATION.md](docs/SECURITY-REMEDIATION.md).

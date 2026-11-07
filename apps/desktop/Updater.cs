@@ -8,7 +8,7 @@ namespace PCBoost;
 
 // Atualizações: consulta a última release do GitHub, baixa o instalador novo e o executa em modo
 // "--update", que espera este processo fechar, troca o executável instalado e reabre o app.
-public sealed record UpdateInfo(Version Version, string Tag, string DownloadUrl, string PageUrl, long Size);
+public sealed record UpdateInfo(Version Version, string Tag, string DownloadUrl, string PageUrl, long Size, string Sha256);
 
 public static class Updater
 {
@@ -48,12 +48,18 @@ public static class Updater
         if (!Version.TryParse(tag.TrimStart('v', 'V'), out var latest)) return null;
         latest = new Version(latest.Major, latest.Minor, Math.Max(0, latest.Build));
         if (latest <= (current ?? Current)) return null;
+        var assets = root.GetProperty("assets").EnumerateArray().ToArray();
+        string Asset(string name) => assets.FirstOrDefault(a => a.GetProperty("name").GetString() == name) is var a && a.ValueKind == JsonValueKind.Object
+            ? a.GetProperty("browser_download_url").GetString()! : throw new InvalidDataException("Release sem manifesto assinado.");
+        var manifest = UpdateTrust.VerifyManifest(await http.GetByteArrayAsync(Asset("update-manifest.json"), cancel), await http.GetByteArrayAsync(Asset("update-manifest.sig"), cancel));
+        if (manifest.Version != latest.ToString(3)) throw new InvalidDataException("Versão do manifesto não confere.");
         foreach (var asset in root.GetProperty("assets").EnumerateArray())
         {
             string name = asset.GetProperty("name").GetString() ?? "";
             if (!name.EndsWith("-Setup.exe", StringComparison.OrdinalIgnoreCase)) continue;
+            if (manifest.DownloadUrl != asset.GetProperty("browser_download_url").GetString() || manifest.Size != asset.GetProperty("size").GetInt64()) throw new InvalidDataException("Instalador diverge do manifesto assinado.");
             return new UpdateInfo(latest, tag, asset.GetProperty("browser_download_url").GetString()!,
-                root.GetProperty("html_url").GetString() ?? "", asset.GetProperty("size").GetInt64());
+                root.GetProperty("html_url").GetString() ?? "", manifest.Size, manifest.Sha256);
         }
         return null; // release sem instalador anexado
     }
@@ -61,7 +67,8 @@ public static class Updater
     // Baixa o instalador para %TEMP%. O nome precisa conter "Setup" para o exe rodar como instalador.
     public static async Task<string> Download(UpdateInfo update, IProgress<double>? progress = null, CancellationToken cancel = default)
     {
-        string folder = Path.Combine(Path.GetTempPath(), Installer.AppName + "-Update");
+        if (!Uri.TryCreate(update.DownloadUrl, UriKind.Absolute, out var downloadUri) || downloadUri.Scheme != "https") throw new InvalidDataException("Atualizações exigem HTTPS.");
+        string folder = Path.Combine(Path.GetTempPath(), Installer.AppName + "-Update", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
         string target = Path.Combine(folder, $"{Installer.AppName}-Setup-{update.Version}.exe"), partial = target + ".part";
         using var http = Http(TimeSpan.FromMinutes(15));
@@ -79,13 +86,18 @@ public static class Updater
             }
             if (update.Size > 0 && done != update.Size) throw new IOException("Download incompleto. Tente de novo.");
         }
+        UpdateTrust.VerifyInstaller(partial, update.Sha256);
         File.Move(partial, target, true);
         return target;
     }
 
     // Inicia o instalador baixado; o app deve fechar logo depois.
-    public static void Launch(string setup) =>
+    public static void Launch(string setup)
+    {
+        using var locked = new FileStream(setup, FileMode.Open, FileAccess.Read, FileShare.Read);
+        UpdateTrust.VerifyInstaller(setup);
         Process.Start(new ProcessStartInfo(setup, $"--update {Environment.ProcessId}") { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(setup)! })?.Dispose();
+    }
 
     // Executado pelo instalador em modo --update: espera o app antigo fechar, instala e reabre.
     public static void RunUpdate(string[] args)

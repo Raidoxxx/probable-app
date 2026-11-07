@@ -7,6 +7,33 @@ namespace PCBoost.Server;
 // Estado em memória: conexões ativas (presença) e quem está em cada canal de voz.
 public sealed class Presence
 {
+    // Serializa mudanças de participação com entrada, saída e envio pelo hub.
+    public SemaphoreSlim Gate { get; } = new(1, 1);
+    private readonly ConcurrentDictionary<string, (string Session, Action Abort)> sessions = new();
+    public void Track(string id, string session, Action abort) => sessions[id] = (session, abort);
+    public string? Session(string id) => sessions.TryGetValue(id, out var s) ? s.Session : null;
+    public string[] Connections(long userId) => connections.Where(c => c.Value.Id == userId).Select(c => c.Key).ToArray();
+    public void Revoke(string session) { foreach (var s in sessions.Values.Where(s => s.Session == session)) s.Abort(); }
+    public void Expire(Db db) { foreach (var s in sessions.Values) if (db.UserBySession(s.Session) is null) s.Abort(); }
+    private readonly Dictionary<string, (long At, int Packets, int Bytes, int Rejected)> traffic = [];
+    public bool AllowAudio(string id, int bytes)
+    {
+        lock (callGate)
+        {
+            if (!callers.TryGetValue(id, out var call) || call.Who.Muted) return false;
+            long now = Environment.TickCount64;
+            var t = traffic.GetValueOrDefault(id);
+            if (now - t.At >= 1000) t = (now, 0, 0, 0);
+            if (t.Packets >= 35 || t.Bytes + bytes > 40000)
+            {
+                traffic[id] = (t.At, t.Packets, t.Bytes, t.Rejected + 1);
+                if (t.Rejected >= 99 && sessions.TryGetValue(id, out var session)) session.Abort();
+                return false;
+            }
+            traffic[id] = (t.At, t.Packets + 1, t.Bytes + bytes, t.Rejected);
+            return true;
+        }
+    }
     private readonly ConcurrentDictionary<string, UserDto> connections = new();
     private readonly ConcurrentDictionary<long, int> online = new();
     private readonly object callGate = new();
@@ -15,6 +42,8 @@ public sealed class Presence
     public bool Connect(string connectionId, UserDto user) { connections[connectionId] = user; return online.AddOrUpdate(user.Id, 1, (_, n) => n + 1) == 1; }
     public bool Disconnect(string connectionId, out UserDto? user)
     {
+        sessions.TryRemove(connectionId, out _);
+        lock (callGate) traffic.Remove(connectionId);
         if (!connections.TryRemove(connectionId, out user)) return false;
         return online.AddOrUpdate(user.Id, 0, (_, n) => Math.Max(0, n - 1)) == 0;
     }
@@ -55,7 +84,8 @@ public sealed class TeamHub(Db db, Presence presence, ILogger<TeamHub> log) : Hu
     public const string UserKey = "pcboost.user";
     private static string G(long groupId) => "g:" + groupId;   // todos os membros do servidor
     private static string V(long channelId) => "v:" + channelId; // quem está no canal de voz
-    private UserDto Me => presence.User(Context.ConnectionId) ?? throw new HubException("Sessão inválida.");
+    private UserDto Me => presence.Session(Context.ConnectionId) is string session && db.UserBySession(session) is UserDto user
+        ? user : throw new HubException("Sessão inválida.");
     private void Require(long groupId) { if (!db.IsMember(Me.Id, groupId)) throw new HubException("Você não participa deste servidor."); }
     private ChannelDto RequireChannel(long channelId, string? kind = null)
     {
@@ -74,6 +104,9 @@ public sealed class TeamHub(Db db, Presence presence, ILogger<TeamHub> log) : Hu
     public override async Task OnConnectedAsync()
     {
         if (Context.GetHttpContext()?.Items[UserKey] is not UserDto user) { Context.Abort(); return; }
+        string session = (string)Context.GetHttpContext()!.Items[SessionFilter.SessionKey]!;
+        if (db.UserBySession(session) is null) { Context.Abort(); return; }
+        presence.Track(Context.ConnectionId, session, Context.Abort);
         bool first = presence.Connect(Context.ConnectionId, user);
         foreach (var group in db.Groups(user.Id))
         {
@@ -96,23 +129,36 @@ public sealed class TeamHub(Db db, Presence presence, ILogger<TeamHub> log) : Hu
     public async Task<GroupDto> CreateGroup(string name)
     {
         var group = db.CreateGroup(Me.Id, Clean(name, 60, "Nome do servidor"));
-        await Groups.AddToGroupAsync(Context.ConnectionId, G(group.Id)); log.LogInformation("Servidor {Id} criado por {User}", group.Id, Me.Id);
+        foreach (string id in presence.Connections(Me.Id)) await Groups.AddToGroupAsync(id, G(group.Id));
+        log.LogInformation("Servidor {Id} criado por {User}", group.Id, Me.Id);
         return group;
     }
     public async Task<GroupDto> JoinGroup(string code)
     {
         GroupDto group;
         try { group = db.JoinGroup(Me.Id, Clean(code, 12, "Código")); } catch (AppError e) { throw new HubException(e.Message); }
-        await Groups.AddToGroupAsync(Context.ConnectionId, G(group.Id));
+        foreach (string id in presence.Connections(Me.Id)) await Groups.AddToGroupAsync(id, G(group.Id));
         await Clients.OthersInGroup(G(group.Id)).SendAsync("MembersChanged", group.Id);
         return group;
     }
     public async Task LeaveGroup(long groupId)
     {
         Require(groupId);
-        if (presence.CallOf(Context.ConnectionId)?.GroupId == groupId) await LeaveCall();
-        db.LeaveGroup(Me.Id, groupId);
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, G(groupId));
+        long userId = Me.Id;
+        var changed = new HashSet<long>();
+        foreach (string id in presence.Connections(userId))
+        {
+            if (presence.CallOf(id) is (long g, long c) && g == groupId)
+            {
+                presence.LeaveCall(id);
+                await Groups.RemoveFromGroupAsync(id, V(c));
+                changed.Add(c);
+            }
+            await Groups.RemoveFromGroupAsync(id, G(groupId));
+        }
+        db.LeaveGroup(userId, groupId);
+        await Clients.Clients(presence.Connections(userId)).SendAsync("GroupLeft", groupId);
+        foreach (long c in changed) await BroadcastCall(groupId, c);
         await Clients.Group(G(groupId)).SendAsync("MembersChanged", groupId);
     }
     public List<MemberDto> Members(long groupId) { Require(groupId); return db.Members(groupId, presence.IsOnline); }
@@ -203,7 +249,9 @@ public sealed class TeamHub(Db db, Presence presence, ILogger<TeamHub> log) : Hu
     public List<VoiceState> CallStates(long groupId) { Require(groupId); return presence.GroupCalls(groupId); }
     public Task Audio(byte[] frame)
     {
-        if (frame is null || frame.Length == 0 || frame.Length > MaxAudioFrame || presence.CallOf(Context.ConnectionId) is not (_, long channelId)) return Task.CompletedTask;
+        if (frame is null || frame.Length == 0 || frame.Length > MaxAudioFrame || frame.Length % 2 != 0 || presence.CallOf(Context.ConnectionId) is not (_, long channelId)) return Task.CompletedTask;
+        RequireChannel(channelId, ChannelKind.Voice);
+        if (!presence.AllowAudio(Context.ConnectionId, frame.Length)) return Task.CompletedTask;
         return Clients.OthersInGroup(V(channelId)).SendAsync("Audio", Me.Id, frame);
     }
     private Task BroadcastCall(long groupId, long channelId) => Clients.Group(G(groupId)).SendAsync("CallChanged", groupId, channelId, presence.Participants(channelId));

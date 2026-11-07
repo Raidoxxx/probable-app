@@ -1,0 +1,51 @@
+name: Security regressions
+on:
+  push:
+    paths: ['apps/**', 'packages/**', 'tests/**', 'Directory.Build.props', '.github/workflows/security-regression.yml']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet build tests/SecurityRegression/SecurityRegression.csproj -c Release
+      - name: Run security regressions with isolated test processes
+        shell: pwsh
+        run: |
+          $dotnet = (Get-Command dotnet).Source
+          & $dotnet tests/SecurityRegression/bin/Release/net10.0-windows/SecurityRegression.dll $dotnet apps/server/bin/Release/net10.0/PCBoost.Server.dll
+          if ($LASTEXITCODE -ne 0) { throw 'Security regressions failed.' }
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet publish apps/server/PCBoost.Server.csproj -c Release -r linux-x64 --self-contained true -o out/server
+      - name: Smoke test Linux package and backup restoration
+        shell: bash
+        run: |
+          export PCBOOST_DATA="$RUNNER_TEMP/regression.db"
+          export PCBOOST_BACKUP_DIR="$RUNNER_TEMP/backups"
+          ./out/server/PCBoost.Server --urls http://127.0.0.1:5087 > "$RUNNER_TEMP/server.log" 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID"' EXIT
+          for i in $(seq 1 30); do
+            if curl -fs http://127.0.0.1:5087/api/health; then break; fi
+            sleep 1
+          done
+          curl -fs http://127.0.0.1:5087/api/health
+          for i in $(seq 1 30); do
+            BACKUP=$(find "$PCBOOST_BACKUP_DIR" -name 'pcboost-*.db' -print -quit 2>/dev/null || true)
+            if [ -n "$BACKUP" ]; then break; fi
+            sleep 1
+          done
+          test -n "$BACKUP"
+          ./out/server/PCBoost.Server --verify-backup "$BACKUP"

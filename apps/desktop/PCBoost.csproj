@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <AssemblyName>Ximbuismo</AssemblyName>
     <RootNamespace>PCBoost</RootNamespace>
@@ -13,18 +13,21 @@
     <TeamServerUrl Condition="'$(TeamServerUrl)' == ''">http://localhost:5080</TeamServerUrl>
     <!-- Repositório do GitHub cujas releases o app consulta para se atualizar: -p:UpdateRepo=dono/repo -->
     <UpdateRepo Condition="'$(UpdateRepo)' == ''">Raidoxxx/probable-app</UpdateRepo>
+    <UpdateSignerSha256 Condition="'$(UpdateSignerSha256)' == ''"></UpdateSignerSha256>
+    <UpdateManifestPublicKey Condition="'$(UpdateManifestPublicKey)' == ''"></UpdateManifestPublicKey>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets/Ximbuismo.ico" />
     <AssemblyMetadata Include="TeamServer" Value="$(TeamServerUrl)" />
     <AssemblyMetadata Include="UpdateRepo" Value="$(UpdateRepo)" />
+    <AssemblyMetadata Include="UpdateSignerSha256" Value="$(UpdateSignerSha256)" />
+    <AssemblyMetadata Include="UpdateManifestPublicKey" Value="$(UpdateManifestPublicKey)" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\packages\shared\PCBoost.Shared.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.14" />
     <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 </Project>

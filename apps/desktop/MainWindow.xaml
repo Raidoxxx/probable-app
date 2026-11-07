@@ -1,61 +1,33 @@
 <Window x:Class="PCBoost.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Ximbuismo" Icon="Assets/Ximbuismo.ico" Width="1360" Height="900" MinWidth="980" MinHeight="680" Background="{StaticResource Bg}" Foreground="{StaticResource Ink}"
         FontFamily="{StaticResource Sans}" WindowStartupLocation="CenterScreen" SizeChanged="LayoutChanged" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+  <Window.Resources>
+    <FontFamily x:Key="Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <!-- Sombra separada do conteúdo para o texto continuar nítido (efeitos desligam o ClearType). -->
+    <Style x:Key="FloatShadow" TargetType="Border">
+      <Setter Property="Background" Value="#101010"/><Setter Property="CornerRadius" Value="12"/><Setter Property="IsHitTestVisible" Value="False"/>
+      <Setter Property="Effect"><Setter.Value><DropShadowEffect BlurRadius="26" ShadowDepth="0" Opacity="0.6" Color="Black"/></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="Float" TargetType="Border">
+      <Setter Property="Background" Value="#101010"/><Setter Property="BorderBrush" Value="#2A2A2A"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="12"/>
+    </Style>
+    <!-- Alça que aparece na borda quando o painel está recolhido. -->
+    <Style x:Key="Handle" TargetType="Border">
+      <Setter Property="Background" Value="#3A3A3A"/><Setter Property="CornerRadius" Value="2"/><Setter Property="IsHitTestVisible" Value="False"/><Setter Property="Opacity" Value="0"/>
+    </Style>
+    <Style x:Key="TopIcon" TargetType="TextBlock"><Setter Property="FontFamily" Value="{StaticResource Icons}"/><Setter Property="FontSize" Value="16"/><Setter Property="Foreground" Value="#CFCFCF"/></Style>
+  </Window.Resources>
   <Grid>
-    <!-- ================= APP (estrutura como a do Discord) ================= -->
-    <Grid x:Name="Shell">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="72"/><ColumnDefinition x:Name="SidebarColumn" Width="240"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-      <!-- Trilho: Boost + servidores -->
-      <Border Background="#050505" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
-        <ScrollViewer VerticalScrollBarVisibility="Hidden"><StackPanel x:Name="Rail" Margin="0,12,0,12"/></ScrollViewer>
-      </Border>
-      <!-- Barra de canais -->
-      <Border Grid.Column="1" Background="{StaticResource Paper}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
-        <DockPanel>
-          <Border DockPanel.Dock="Top" x:Name="SidebarHeader" Height="52" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Background="Transparent" MouseLeftButtonUp="SidebarHeaderClicked">
-            <DockPanel Margin="16,0,14,0">
-              <TextBlock x:Name="SidebarChevron" DockPanel.Dock="Right" Text="▾" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Visibility="Collapsed"/>
-              <TextBlock x:Name="SidebarTitle" Text="Boost" FontWeight="SemiBold" FontSize="14.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-            </DockPanel>
-          </Border>
-          <!-- Painel do usuário -->
-          <Border DockPanel.Dock="Bottom" Background="#0B0B0B" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="8">
-            <DockPanel>
-              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                <Button x:Name="AccountButton" Content="Entrar" Padding="10,5" FontSize="12" Click="AccountClicked" Margin="0,0,4,0"/>
-                <Button x:Name="MicButton" Style="{StaticResource GhostButton}" Padding="6,4" Margin="0" ToolTip="Silenciar microfone" Click="MicClicked"><TextBlock x:Name="MicGlyph" Text="🎙" FontFamily="Segoe UI Emoji" FontSize="13"/></Button>
-                <Button x:Name="DeafButton" Style="{StaticResource GhostButton}" Padding="6,4" Margin="0" ToolTip="Desativar áudio" Click="DeafClicked"><TextBlock x:Name="DeafGlyph" Text="🎧" FontFamily="Segoe UI Emoji" FontSize="13"/></Button>
-                <Button x:Name="SettingsButton" Style="{StaticResource GhostButton}" Padding="6,3" Margin="0" ToolTip="Configurações" Click="SettingsClicked"><TextBlock Text="⚙" FontFamily="Segoe UI Symbol" FontSize="15"/></Button>
-              </StackPanel>
-              <Grid x:Name="UserAvatarHost" Width="32" Height="32" Margin="0,0,8,0" VerticalAlignment="Center"/>
-              <StackPanel x:Name="AccountDetails" VerticalAlignment="Center">
-                <TextBlock x:Name="AccountName" Text="Sem conta" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
-                <TextBlock x:Name="AccountState" Text="OFFLINE" Style="{StaticResource Eyebrow}" FontSize="9.5" TextTrimming="CharacterEllipsis"/>
-              </StackPanel>
-            </DockPanel>
-          </Border>
-          <!-- Voz conectada, acima do usuário -->
-          <Border DockPanel.Dock="Bottom" x:Name="VoicePanel" Visibility="Collapsed" Background="#0B0B0B" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="12,8,8,8">
-            <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Padding="8,4" Margin="0" ToolTip="Desconectar da voz" Click="HangUpClicked"><TextBlock Text="✕" Foreground="{StaticResource Danger}" FontSize="13"/></Button>
-              <StackPanel>
-                <TextBlock Text="VOZ CONECTADA" Style="{StaticResource Eyebrow}" Foreground="{StaticResource Accent}" FontSize="10"/>
-                <TextBlock x:Name="CallBadge" Foreground="{StaticResource Muted}" FontSize="11.5" TextTrimming="CharacterEllipsis"/>
-              </StackPanel>
-            </DockPanel>
-          </Border>
-          <Popup x:Name="ServerMenu" PlacementTarget="{Binding ElementName=SidebarHeader}" Placement="Bottom" HorizontalOffset="8" StaysOpen="False" AllowsTransparency="True">
-            <Border Background="#0C0C0C" BorderBrush="{StaticResource LineStrong}" BorderThickness="1" Width="224" Padding="6"><StackPanel x:Name="ServerMenuHost"/></Border>
-          </Popup>
-          <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel x:Name="SidebarHost" Margin="8,10,8,10"/></ScrollViewer>
-        </DockPanel>
-      </Border>
-      <!-- Conteúdo -->
-      <Grid Grid.Column="2">
+    <!-- ================= APP: área principal + painéis flutuantes que recuam sozinhos =================
+         Topo (busca e ações) · Canais à esquerda · Membros/Voz/Booster à direita · Servidores embaixo.
+         Cada painel some para a borda quando o mouse sai; encostar o mouse na borda traz de volta. O alfinete fixa todos. -->
+    <Grid x:Name="Shell" PreviewMouseMove="ShellMouseMove" Background="{StaticResource Bg}">
+
+      <!-- Área principal: conversa, conteúdo, workspace -->
+      <Grid x:Name="Main">
         <Grid.RowDefinitions><RowDefinition Height="52"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-        <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="10,0,16,0">
+        <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="18,0,16,0">
           <DockPanel>
-            <Button DockPanel.Dock="Left" Content="☰" Padding="8,4" Click="ToggleSidebar" ToolTip="Mostrar ou esconder canais" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource GhostButton}"/>
             <Button DockPanel.Dock="Right" x:Name="UpdateButton" Visibility="Collapsed" Click="UpdateClicked" Padding="10,5" Margin="10,0,0,0" VerticalAlignment="Center" BorderBrush="{StaticResource Accent}">
               <TextBlock x:Name="UpdateLabel" Text="ATUALIZAR" FontFamily="{StaticResource Mono}" FontSize="10.5" Foreground="{StaticResource Accent}"/>
             </Button>
@@ -74,6 +46,119 @@
         <ProgressBar x:Name="ActivityBar" Grid.Row="1" Height="1" VerticalAlignment="Top" IsIndeterminate="False" Foreground="{StaticResource Ink}" Background="Transparent" BorderThickness="0" Visibility="Collapsed"/>
         <Border x:Name="Toast" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,20" MaxWidth="460" Background="#0C0C0C" BorderBrush="{StaticResource LineStrong}" BorderThickness="1" Padding="14,10" Visibility="Collapsed" IsHitTestVisible="False">
           <TextBlock x:Name="StatusLabel" FontFamily="{StaticResource Mono}" FontSize="11" Foreground="{StaticResource Ink}" TextWrapping="Wrap"/>
+        </Border>
+      </Grid>
+
+      <!-- Alças nas bordas (visíveis só com o painel recolhido) -->
+      <Border x:Name="TopHandle" Style="{StaticResource Handle}" Width="72" Height="4" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"/>
+      <Border x:Name="LeftHandle" Style="{StaticResource Handle}" Width="4" Height="72" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,0,0,0"/>
+      <Border x:Name="RightHandle" Style="{StaticResource Handle}" Width="4" Height="72" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0"/>
+      <Border x:Name="BottomHandle" Style="{StaticResource Handle}" Width="72" Height="4" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+
+      <!-- Topo: cabeçalho / busca / ações rápidas -->
+      <Grid x:Name="TopBar" HorizontalAlignment="Center" VerticalAlignment="Top" Width="680" Height="56" Margin="0,10,0,0">
+        <Border Style="{StaticResource FloatShadow}"/>
+        <Border Style="{StaticResource Float}" Padding="16,0,8,0">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+              <Image Source="{StaticResource BrandLogo}" Width="26" Height="26"/>
+              <TextBlock Text="Ximbuismo" FontSize="16" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center"/>
+              <Border Width="1" Height="26" Background="{StaticResource Line}" Margin="16,0"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+              <Border Width="1" Height="26" Background="{StaticResource Line}" Margin="14,0,6,0"/>
+              <Button x:Name="NotifyButton" Style="{StaticResource GhostButton}" Padding="9,7" Margin="0" ToolTip="Sem mensagens novas" Click="NotifyClicked">
+                <Grid>
+                  <TextBlock Text="&#xEA8F;" Style="{StaticResource TopIcon}"/>
+                  <Border x:Name="NotifyBadge" Visibility="Collapsed" Background="{StaticResource Danger}" CornerRadius="7" MinWidth="14" Height="14" Padding="3,0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-9,0">
+                    <TextBlock x:Name="NotifyCount" FontSize="9" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                </Grid>
+              </Button>
+              <Button x:Name="PinButton" Style="{StaticResource GhostButton}" Padding="9,7" Margin="0" Click="PinClicked"><TextBlock x:Name="PinGlyph" Text="&#xE718;" Style="{StaticResource TopIcon}"/></Button>
+              <Button x:Name="SettingsButton" Style="{StaticResource GhostButton}" Padding="9,7" Margin="0" ToolTip="Configurações" Click="SettingsClicked"><TextBlock Text="&#xE713;" Style="{StaticResource TopIcon}"/></Button>
+            </StackPanel>
+            <Grid VerticalAlignment="Center">
+              <TextBox x:Name="SearchBox" Padding="34,7,58,7" MaxLength="80" TextChanged="SearchChanged" PreviewKeyDown="SearchKeyDown"/>
+              <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="13" Foreground="{StaticResource Muted}" Margin="12,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" IsHitTestVisible="False"/>
+              <TextBlock x:Name="SearchHint" Text="Buscar no Ximbuismo…" Foreground="{StaticResource Dim}" FontSize="13" Margin="36,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+              <TextBlock x:Name="SearchKeyHint" Text="CTRL K" Style="{StaticResource Eyebrow}" FontSize="9.5" Foreground="{StaticResource Dim}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" IsHitTestVisible="False"/>
+            </Grid>
+          </DockPanel>
+        </Border>
+        <Popup x:Name="SearchPopup" PlacementTarget="{Binding ElementName=SearchBox}" Placement="Bottom" VerticalOffset="6" StaysOpen="False" AllowsTransparency="True">
+          <Border Background="#0C0C0C" BorderBrush="{StaticResource LineStrong}" BorderThickness="1" CornerRadius="8" Padding="6" MinWidth="{Binding ActualWidth, ElementName=SearchBox}" MaxWidth="520"><StackPanel x:Name="SearchList"/></Border>
+        </Popup>
+      </Grid>
+
+      <!-- Esquerda: canais -->
+      <Grid x:Name="LeftPanel" HorizontalAlignment="Left" Width="236" Margin="12,78,0,92">
+        <Border Style="{StaticResource FloatShadow}"/>
+        <Border Style="{StaticResource Float}">
+          <DockPanel>
+            <Border DockPanel.Dock="Top" x:Name="SidebarHeader" Height="52" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Background="Transparent" MouseLeftButtonUp="SidebarHeaderClicked">
+              <DockPanel Margin="16,0,14,0">
+                <TextBlock x:Name="SidebarChevron" DockPanel.Dock="Right" Text="▾" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Visibility="Collapsed"/>
+                <TextBlock x:Name="SidebarTitle" Text="Boost" FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+              </DockPanel>
+            </Border>
+            <!-- Painel do usuário -->
+            <Border DockPanel.Dock="Bottom" Background="#0B0B0B" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" CornerRadius="0,0,11,11" Padding="8">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                  <Button x:Name="AccountButton" Content="Entrar" Padding="10,5" FontSize="12" Click="AccountClicked" Margin="0,0,4,0"/>
+                  <Button x:Name="MicButton" Style="{StaticResource GhostButton}" Padding="6,4" Margin="0" ToolTip="Silenciar microfone" Click="MicClicked"><TextBlock x:Name="MicGlyph" Text="🎙" FontFamily="Segoe UI Emoji" FontSize="13"/></Button>
+                  <Button x:Name="DeafButton" Style="{StaticResource GhostButton}" Padding="6,4" Margin="0" ToolTip="Desativar áudio" Click="DeafClicked"><TextBlock x:Name="DeafGlyph" Text="🎧" FontFamily="Segoe UI Emoji" FontSize="13"/></Button>
+                </StackPanel>
+                <Grid x:Name="UserAvatarHost" Width="32" Height="32" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                <StackPanel x:Name="AccountDetails" VerticalAlignment="Center">
+                  <TextBlock x:Name="AccountName" Text="Sem conta" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock x:Name="AccountState" Text="OFFLINE" Style="{StaticResource Eyebrow}" FontSize="9.5" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </DockPanel>
+            </Border>
+            <!-- Voz conectada, acima do usuário -->
+            <Border DockPanel.Dock="Bottom" x:Name="VoicePanel" Visibility="Collapsed" Background="#0B0B0B" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="12,8,8,8">
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Padding="8,4" Margin="0" ToolTip="Desconectar da voz" Click="HangUpClicked"><TextBlock Text="✕" Foreground="{StaticResource Danger}" FontSize="13"/></Button>
+                <StackPanel>
+                  <TextBlock Text="VOZ CONECTADA" Style="{StaticResource Eyebrow}" Foreground="{StaticResource Accent}" FontSize="10"/>
+                  <TextBlock x:Name="CallBadge" Foreground="{StaticResource Muted}" FontSize="11.5" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </DockPanel>
+            </Border>
+            <Popup x:Name="ServerMenu" PlacementTarget="{Binding ElementName=SidebarHeader}" Placement="Bottom" HorizontalOffset="8" StaysOpen="False" AllowsTransparency="True">
+              <Border Background="#0C0C0C" BorderBrush="{StaticResource LineStrong}" BorderThickness="1" Width="224" Padding="6"><StackPanel x:Name="ServerMenuHost"/></Border>
+            </Popup>
+            <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel x:Name="SidebarHost" Margin="8,10,8,10"/></ScrollViewer>
+          </DockPanel>
+        </Border>
+      </Grid>
+
+      <!-- Direita: membros / voz / booster -->
+      <Grid x:Name="RightPanel" HorizontalAlignment="Right" Width="236" Margin="0,78,12,92">
+        <Border Style="{StaticResource FloatShadow}"/>
+        <Border Style="{StaticResource Float}">
+          <DockPanel>
+            <Border DockPanel.Dock="Top" Height="52" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="16,0,14,0">
+              <TextBlock Text="Membros · Voz · Booster" FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            </Border>
+            <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel x:Name="PeopleHost" Margin="8,8,8,12"/></ScrollViewer>
+          </DockPanel>
+        </Border>
+      </Grid>
+
+      <!-- Embaixo: servidores -->
+      <Grid x:Name="BottomDock" HorizontalAlignment="Center" VerticalAlignment="Bottom" Height="68" Margin="0,0,0,12">
+        <Border Style="{StaticResource FloatShadow}"/>
+        <Border Style="{StaticResource Float}" Padding="18,0,10,0">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+              <TextBlock Text="Servidores" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <Border Width="1" Height="30" Background="{StaticResource Line}" Margin="16,0,6,0"/>
+            </StackPanel>
+            <ScrollViewer x:Name="RailScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" VerticalAlignment="Center"><StackPanel x:Name="Rail" Orientation="Horizontal"/></ScrollViewer>
+          </DockPanel>
         </Border>
       </Grid>
     </Grid>

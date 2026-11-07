@@ -28,7 +28,7 @@ public partial class MainWindow : Window
     private Task? sessionTask;
     private OwnedProcess? game;
     private SessionLog? gameLog;
-    private bool sampling, busy, closed, sidebarCollapsed;
+    private bool sampling, busy, closed;
     private bool measureForeground;
     private bool groupChildren = true;
     private int page;
@@ -64,7 +64,7 @@ public partial class MainWindow : Window
         store = localStore ?? new LocalStore(); settings = store.Load(); telemetry = new(store, settings);
         team = new Team.TeamClient(store.Root);
         InitializeComponent();
-        InitTeam(); InitBoost(); InitUpdates();
+        InitTeam(); InitBoost(); InitUpdates(); InitDrawers();
         toastTimer.Tick += (_, _) => { toastTimer.Stop(); Toast.Visibility = Visibility.Collapsed; };
         Navigate(0);
         SourceInitialized += (_, _) => DarkTitleBar();
@@ -178,7 +178,7 @@ public partial class MainWindow : Window
         sphere = new Image { Height = 300, Stretch = Stretch.None, Margin = new Thickness(0, 6, 0, 6) };
         sphere.SizeChanged += (_, _) => RenderSphere(false);
         Grid.SetRow(sphere, 1); hero.Children.Add(sphere);
-        metricsGrid = new UniformGrid { Columns = ActualWidth < 1120 ? 1 : 3 };
+        metricsGrid = new UniformGrid { Columns = 3 };
         Border Metric(int slot, string title, out TextBlock value, string hint)
         {
             value = Text("—", 22, true); value.Margin = new Thickness(0, 6, 0, 2); value.FontFamily = (FontFamily)FindResource("Mono");
@@ -562,16 +562,14 @@ public partial class MainWindow : Window
     }
     private void ApplyLayout()
     {
-        // A barra de canais some em janelas estreitas ou pelo botão ☰; o trilho de servidores fica sempre.
-        bool collapse = sidebarCollapsed;
-        SidebarColumn.Width = new GridLength(collapse ? 0 : 240);
-        if (metricsGrid is not null) metricsGrid.Columns = ActualWidth < 1120 ? 1 : 3;
+        // Painéis flutuantes por cima da área principal; fixados (alfinete), eles reservam espaço em volta do conteúdo.
+        ApplyDrawerLayout();
+        if (metricsGrid is not null) metricsGrid.Columns = ActualWidth - Main.Margin.Left - Main.Margin.Right < 820 ? 1 : 3;
         // Tela de entrada: a arte das pilastras ganha mais espaço em janelas largas e cede espaço ao formulário nas estreitas.
         LoginArtColumn.Width = new GridLength(ActualWidth < 1150 ? 0.85 : ActualWidth > 1700 ? 1.35 : 1.08, GridUnitType.Star);
     }
     private void LayoutChanged(object sender, SizeChangedEventArgs e) { if (Rail is not null) ApplyLayout(); }
     private void SettingsClicked(object sender, RoutedEventArgs e) => Navigate(PageSettings);
-    private void ToggleSidebar(object sender, RoutedEventArgs e) { sidebarCollapsed = !sidebarCollapsed; ApplyLayout(); }
     private bool BusyWithSession => sessionTask?.IsCompleted == false || session?.HasProcesses == true || game?.HasActiveProcesses == true;
     private void OnClosing(object? sender, CancelEventArgs e)
     {

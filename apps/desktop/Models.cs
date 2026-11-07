@@ -57,6 +57,8 @@ public sealed class BoosterSettings
     public List<ProfileRule> DevelopmentRules { get; set; } = [];
     public List<ProjectConfig> Projects { get; set; } = [];
     public List<string> CustomGames { get; set; } = [];
+    // Alfinete do topo: painéis fixos em vez de recuarem sozinhos.
+    public bool PinPanels { get; set; }
     public void Validate()
     {
         CustomGames ??= [];

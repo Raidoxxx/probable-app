@@ -23,7 +23,7 @@ public partial class MainWindow
     {
         autoBoost = new AutoBoost(store.Root);
         autoBoost.StateChanged += () => Ui(UpdateBoostState);
-        Closed += (_, _) => { try { if (autoBoost.Active) autoBoost.Deactivate(); } catch (Exception) { } };
+        Closed += (_, _) => { try { autoBoost.Deactivate(); } catch (Exception) { } };
     }
 
     private void BoostPage()
@@ -59,7 +59,7 @@ public partial class MainWindow
     private async Task ToggleBoost()
     {
         if (autoBoost is null || boosting) return;
-        if (autoBoost.Active) { autoBoost.Deactivate(); Status("Boost desligado. Tudo voltou ao normal."); return; }
+        if (autoBoost.State != BoostState.Idle) { autoBoost.Deactivate(); Status(autoBoost.State == BoostState.Idle ? "Boost desligado. Tudo voltou ao normal." : autoBoost.Summary); return; }
         boosting = true; UpdateBoostState();
         try { await autoBoost.Activate(); Status("Boost ligado. Clique de novo para desligar."); }
         finally { boosting = false; UpdateBoostState(); }
@@ -78,6 +78,7 @@ public partial class MainWindow
     }
     private void UpdateBoostState()
     {
+        UpdateBoosterPanel();
         if (boostButton is null || autoBoost is null) return;
         bool on = autoBoost.Active;
         boostButton.Content = boosting ? "· · ·" : "BOOST";
