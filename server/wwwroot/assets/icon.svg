@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Ximbuismo: X cortado com um olho">
+  <path fill="#ededed" d="M18 12h16l30 30 30-30h16L76 46H52ZM18 116l34-34h24l34 34H94L64 86l-30 30Z"/>
+  <path fill="none" stroke="#ededed" stroke-width="3" d="M27 64c20-16 54-16 74 0-20 16-54 16-74 0Z"/>
+  <circle cx="64" cy="64" r="7" fill="#ededed"/>
+</svg>
